@@ -24,7 +24,7 @@ namespace SantasLittleHelpers
             holder = interactor;
             body.isKinematic = false;
             body.useGravity = false;
-            body.velocity = Vector3.zero;
+            body.linearVelocity = Vector3.zero;
             body.angularVelocity = Vector3.zero;
             return true;
         }
@@ -48,7 +48,7 @@ namespace SantasLittleHelpers
             Vector3 desiredVelocity = Vector3.ClampMagnitude((destination - body.position) * carryResponsiveness, carrySpeed);
             // Velocity control preserves dynamic collision response while heavier gifts accelerate more slowly.
             float maxDelta = carryResponsiveness * Time.fixedDeltaTime;
-            body.velocity = Vector3.MoveTowards(body.velocity, desiredVelocity, maxDelta / Mathf.Max(0.1f, body.mass));
+            body.linearVelocity = Vector3.MoveTowards(body.linearVelocity, desiredVelocity, maxDelta / Mathf.Max(0.1f, body.mass));
         }
 
         private void OnDisable()

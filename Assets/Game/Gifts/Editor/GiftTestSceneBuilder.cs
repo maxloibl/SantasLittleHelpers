@@ -35,6 +35,8 @@ namespace SantasLittleHelpers.Editor
             CharacterController character = player.AddComponent<CharacterController>();
             character.height = 1.8f;
             character.radius = 0.35f;
+            character.center = new Vector3(0, 0.9f, 0);
+            character.skinWidth = 0.08f;
             GameObject cameraObject = new GameObject("View Camera");
             cameraObject.transform.SetParent(player.transform, false);
             cameraObject.transform.localPosition = new Vector3(0, 1.6f, 0);
@@ -98,9 +100,17 @@ namespace SantasLittleHelpers.Editor
         private static Material MakeMaterial(string name, Color color)
         {
             Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            Material material = new Material(shader) { name = name, color = color };
             string path = Root + "/" + name.Replace(" ", "") + ".mat";
-            AssetDatabase.CreateAsset(material, AssetDatabase.GenerateUniqueAssetPath(path));
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader) { name = name };
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            material.shader = shader;
+            material.color = color;
+            EditorUtility.SetDirty(material);
             return material;
         }
 
@@ -113,6 +123,4 @@ namespace SantasLittleHelpers.Editor
         }
     }
 }
-
-
 
