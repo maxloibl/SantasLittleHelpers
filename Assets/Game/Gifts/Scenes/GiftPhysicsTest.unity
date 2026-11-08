@@ -579,7 +579,7 @@ GameObject:
   - component: {fileID: 1262223260}
   - component: {fileID: 1262223259}
   - component: {fileID: 1262223258}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Gift Test Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -738,7 +738,7 @@ GameObject:
   - component: {fileID: 1811493634}
   - component: {fileID: 1811493636}
   - component: {fileID: 1811493635}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: View Camera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}

@@ -31,6 +31,7 @@ namespace SantasLittleHelpers.Editor
             CreateWall("Carry Obstacle", new Vector3(0, 0.65f, 2.4f), new Vector3(1.2f, 1.3f, 0.35f));
 
             GameObject player = new GameObject("Gift Test Player");
+            player.layer = 8;
             player.transform.position = new Vector3(0, 0, -3);
             CharacterController character = player.AddComponent<CharacterController>();
             character.height = 1.8f;
@@ -38,6 +39,7 @@ namespace SantasLittleHelpers.Editor
             character.center = new Vector3(0, 0.9f, 0);
             character.skinWidth = 0.08f;
             GameObject cameraObject = new GameObject("View Camera");
+            cameraObject.layer = 8;
             cameraObject.transform.SetParent(player.transform, false);
             cameraObject.transform.localPosition = new Vector3(0, 1.6f, 0);
             cameraObject.tag = "MainCamera";
