@@ -21,7 +21,7 @@ Each player has its own `NetworkObject`. `OwnerNetworkTransform` lets the owner 
 - Windows x86_64 Development Build: `NETWORK_BUILD result=Succeeded errors=0 warnings=1`.
 - Two separate Windows processes connected over localhost port `7777`: host PID `38264`, client PID `42380`.
 - Host log showed owner 0 as `localOwner=True localView=True`, owner 1 as `localOwner=False localView=False`. Client log showed the inverse.
-- `--autoplay` produced independent movement observed by both peers. Host logged owner 0 moving from x `-4.00` to about `-3.84`, and owner 1 moving from `-3.00` to about `-2.91`; client saw owner 1 move from `-3.00` to about `-2.90` while receiving host positions.
+- `--autoplay` produced two separately visible player figures with independent movement observed by both peers. Host logged owner 0 moving from x `-4.00` to about `-3.84`, and owner 1 moving from `-3.00` to about `-2.91`; client saw owner 1 move from `-3.00` to about `-2.90` while receiving host positions. The client briefly initializes at x `+4.00`, then syncs to the prefab spawn at x `-3.00`; distinct starting sides are not guaranteed by this test scene.
 - Normal client shutdown logged `NET_NORMAL_SHUTDOWN`, `NET_PLAYER_DESPAWN owner=1`, and `NET_DISCONNECTED clientId=1`; host logged despawn of owner 1 and `NET_DISCONNECTED clientId=1`. No runtime exceptions occurred in this successful run.
 
 The generated build and logs stay outside Git in the private validation copy. Gift and capture replication are out of scope.
