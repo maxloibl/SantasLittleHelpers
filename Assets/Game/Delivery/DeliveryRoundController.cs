@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SantasLittleHelpers.AI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -13,6 +14,7 @@ namespace SantasLittleHelpers.Delivery
         [SerializeField] private Transform player;
         [SerializeField] private Transform sleigh;
         [SerializeField] private GiftCarryable requiredGift;
+        [SerializeField] private ResidentBrain[] residents = new ResidentBrain[0];
         [SerializeField, Min(0.1f)] private float returnRadius = 2f;
         private readonly Dictionary<GiftCarryable, GiftSnapshot> snapshots = new Dictionary<GiftCarryable, GiftSnapshot>();
         private DeliveryRoundState state;
@@ -69,6 +71,8 @@ namespace SantasLittleHelpers.Delivery
             foreach (KeyValuePair<GiftCarryable, GiftSnapshot> entry in snapshots)
                 if (entry.Key != null) entry.Value.Restore(entry.Key);
             player.SetPositionAndRotation(playerStartPosition, playerStartRotation);
+            foreach (ResidentBrain resident in residents)
+                if (resident != null) resident.ResetForRound();
             delivered = false;
             state = DeliveryRoundState.DeliverGift;
             status = "Bring the marked gift to the delivery point.";
