@@ -3,12 +3,12 @@
 ## 1. Unity unter Windows einrichten
 
 1. Öffne [Unity Hub](https://unity.com/download) und melde dich mit deinem Unity-Konto an. Aktiviere in Hub eine Lizenz, falls der Editor danach fragt.
-2. Installiere über **Installs → Install Editor** den Editor **Unity 6.3 LTS, 6000.3.28f1**. Wenn Hub den Patch nicht anbietet, öffne die Installation über das [Unity-Releasearchiv](https://unity.com/releases/editor/whats-new/6000.3.28f1). Der bereits vorhandene Editor `C:\6000.6.8f1` gehört zur Unity-6.6-Reihe.
+2. Installiere über **Installs → Install Editor** genau die Version aus [ProjectVersion.txt](ProjectSettings/ProjectVersion.txt). Der aktuelle Stand verwendet **Unity 6000.6.8f1**. Auf diesem Rechner liegt der Editor unter `C:\6000.6.8f1`. [Unity-Releasearchiv](https://unity.com/releases/editor/whats-new/6000.6.8f1)
 3. Wähle für spätere Windows-Builds bei Bedarf **Windows Build Support (IL2CPP)**. Für den ersten Test reicht der Editor. Git und Visual Studio wurden auf diesem Rechner bereits gefunden. In Visual Studio kann bei Bedarf über den Visual Studio Installer die Workload **Game development with Unity** ergänzt werden.
 4. Wähle in Hub **Projects → Add → Add project from disk** und dann den Ordner `SantasLittleHelpers`, der `Assets`, `Packages` und `ProjectSettings` enthält. Öffne das Projekt mit dem in Schritt 2 installierten Editor und lass den ersten Import fertiglaufen.
 5. Öffne im Project-Fenster `Assets/Game/Scenes/MovementSandbox.unity`. Drücke **Play** und klicke in die **Game**-Ansicht.
 
-[Unity-LTS-Übersicht](https://unity.com/releases/unity-6/support) · [URP-Projektanlage](https://docs.unity3d.com/6000.3/Documentation/Manual/urp/creating-a-new-project-with-urp.html) · [Input-System-Installation](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.17/manual/Installation.html)
+[Unity-LTS-Übersicht](https://unity.com/releases/unity-6/support) · [URP-Projektanlage](https://docs.unity3d.com/6000.6/Documentation/Manual/urp/creating-a-new-project-with-urp.html) · [Input-System-Installation](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.20/manual/Installation.html)
 
 ## 2. Bedienung
 
@@ -36,7 +36,7 @@
 
 Wähle **LocalPlayer** in der Hierarchy, um die Bewegungswerte im Inspector anzupassen. Das Objekt sitzt mit seinem Ursprung an den Füßen und hat Skalierung (1, 1, 1). Es verwendet einen **Character Controller** mit Höhe 1,8 m, Radius 0,32 m und Center Y 0,9 m. Die untergeordnete **ViewCamera** sitzt im Stand auf Y 1,65 m. Sie ist im Feld **View Pivot** zugewiesen. **Ceiling Layers** schließt den Spieler-Layer aus. Wände, Boden und Dach sind auf **Default** und haben Collider. Die Eingabe und Bewegung laufen im dynamischen Bild-Update, ebenso die Kamera als Kind des Spielerobjekts.
 
-Falls du die Szene in einem frisch angelegten Projekt verwenden willst, wähle in Hub **New project → Universal 3D** mit Unity 6.3 LTS. Installiere über **Window → Package Management → Package Manager → Unity Registry** das **Input System**. Setze unter **Edit → Project Settings → Player → Other Settings → Configuration** das Feld **Active Input Handling** auf **Input System Package (New)** und starte den Editor neu. Prüfe unter **Project Settings → Input System Package**, dass **Update Mode** auf **Process Events In Dynamic Update** steht. Kopiere `Assets/Game` einschließlich der `.meta`-Dateien, benenne Layer 8 in **Player** um und öffne die Testszene. Übernimm sie für einen Build in die Szenenliste des Zielprojekts.
+Falls du die Szene in einem frisch angelegten Projekt verwenden willst, wähle in Hub **New project → Universal 3D** mit der Editorversion aus `ProjectVersion.txt`. Installiere über **Window → Package Management → Package Manager → Unity Registry** das **Input System**. Setze unter **Edit → Project Settings → Player → Other Settings → Configuration** das Feld **Active Input Handling** auf **Input System Package (New)** und starte den Editor neu. Prüfe unter **Project Settings → Input System Package**, dass **Update Mode** auf **Process Events In Dynamic Update** steht. Kopiere `Assets/Game` einschließlich der `.meta`-Dateien, benenne Layer 8 in **Player** um und öffne die Testszene. Übernimm sie für einen Build in die Szenenliste des Zielprojekts.
 
 Der Spieler nutzt die Kapsel für direkte Steuerung und Kollisionen. Die späteren Geschenke bekommen ihre eigene Rigidbody-Physik.
 
@@ -44,10 +44,4 @@ Der Spieler nutzt die Kapsel für direkte Steuerung und Kollisionen. Die später
 
 Das lokale Repository liegt direkt im Unity-Projektordner. Unity speichert Assets, ihre `.meta`-Dateien, Paketdefinitionen und Projekteinstellungen im Repository. Generierte Ordner wie `Library`, `Temp` und `Builds` sind ausgeschlossen. Prüfe im Editor unter **Project Settings → Editor → Asset Serialization** die Einstellung **Force Text** und unter **Version Control** die Einstellung **Visible Meta Files**.
 
-Für deinen ersten Commit nach dem Import hinterlege bei Bedarf in diesem Repository deinen Git-Namen und deine Git-E-Mail-Adresse. Öffne dann ein Terminal im Projektordner und führe aus:
-
-```powershell
-git status
-git add .gitignore README.md Assets Packages ProjectSettings
-git commit -m "Add Unity project and first-person movement sandbox"
-```
+Für Issues, Worktrees, Pull Requests und CI siehe [Zusammenarbeit](CONTRIBUTING.md).
