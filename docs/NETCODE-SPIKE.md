@@ -1,39 +1,60 @@
-# Netzcode-Kandidatenprüfung für S1-C
+# Netzcode-Spike für S1-C
 
 Stand: 2026-11-08
-Projekt-Editor: Unity 6000.6.8f1 (Revision 237b6593792b)
+Basis: `5835246`, Branch `issue/3-netzcode-prototyp`
+Editor: Unity `6000.6.8f1` (Revision `237b6593792b`)
 Issue: [#3](https://github.com/maxloibl/SantasLittleHelpers/issues/3)
 
-## Entscheidung
+## Entscheidung für #7 / S2-C
 
-**Konkreter Blocker für #7 / S2-C: Netcode for GameObjects (NGO) 2.7.0 ist ein passender Kandidat, aber für dieses Projekt nicht freigegeben.** Die Dokumentation ordnet NGO den GameObject/MonoBehaviour-Workflows zu; das passt zum First-Person-Controller und den Rigidbody-Geschenken des MVP. Unitys offizielle Paketübersicht für Unity 6000.0 führt 2.7.0 jedoch unter Pre-release. Das ist ein experimenteller Stand, kein Nachweis für Kompatibilität oder Laufzeitverhalten in 6000.6.8f1.
+**NGO `2.13.3` funktioniert mit diesem Editor im isolierten Versuch und ist die empfohlene Option für S2-C.** Unitys Paketübersicht für `6000.6` listet ausschließlich `2.13.3` und kennzeichnet es als **Pre-release**. Das Ergebnis belegt die prototypische Eignung, aber nicht den Released-/Produktionsstatus. Wenn S2-C kein Pre-release verwenden darf, bleibt die Paketfreigabe blockiert, bis Unity eine stabile Version für den Projekt-Editor ausweist.
 
-Zwei headless Editor-Läufe scheiterten vor dem Projektstart und vor Paketauflösung. Der erste meldete `[Licensing::IpcConnector] Connection to channel LicenseClient-MaxLo refused` und `Licensing is not yet initialized.` Im zweiten erreichte Unity den Licensing Client und löste eine Unity-Personal-Lizenz auf, meldete aber `Access token is unavailable; failed to update` und beendete sich mit Exit-Code 1. Ein erneuter Lauf mit `-nographics` endete ebenfalls mit Exit-Code 1 an derselben Stelle. Das eigene Log enthält danach weder Import- noch Paketauflösungs-Ausgaben. Damit konnte ich weder NGO auflösen noch einen Wegwerfprototyp in einer isolierten Szene ausführen. Es gibt folglich **keine Laufzeitprüfung** und keine Evidenz für Host/Client-Sichtbarkeit, hostautoritatives Rigidbody-Verhalten oder Client-Abbruch.
+Die stabile NGO-Version `2.7.0` ist laut Unity für Editor `6000.0` released. UPM löste sie in `6000.6.8f1` auf, aber die Kompilierung schlug in NGO-Code mit mehreren `CS0619`-Fehlern fehl: `EntityId.implicit operator int` ist in dieser Editor-Version obsolete und als Fehler behandelt. Betroffen waren unter anderem `UnityTransport.cs` und `RigidbodyContactEventManager.cs`. Daher nicht `2.7.0` für `6000.6.8f1` pinnen.
 
-**Folgerung:** #7 / S2-C kann NGO 2.7.0 als Versuchskandidat übernehmen, wenn Editor/Lizenz-Initialisierung funktioniert. Vor Paketfreigabe muss ein eigener, isolierter Lauf die untenstehenden Kriterien erfüllen. Falls Pre-release-Pakete nicht akzeptiert werden, bleibt NGO 2.7.0 ein Blocker und #7 muss eine andere Option mit verifizierter Unity-6000.6-Kompatibilität festlegen. Unity Transport wird von NGO als darunterliegende Transportebene genutzt; die exakte transitive Version wurde nicht ermittelt, da die Paketauflösung nicht startete.
+NGO `2.13.3` wurde aus `https://packages.unity.com` aufgelöst und kompilierte fehlerfrei. Die Paketmetadaten deklarieren Transport `2.6.0`; in diesem Unity-Editor enthält das Lockfile `com.unity.transport` als Editor-Builtin `6.6.0`. Die getestete Kombination lautet:
+
+| Bestandteil | Version / Status |
+|---|---|
+| Unity Editor | `6000.6.8f1` (`237b6593792b`) |
+| Netcode for GameObjects | `2.13.3` (Pre-release für Unity 6000.6) |
+| Unity Transport | `6.6.0` (Builtin des Editors; NGO-Metadaten verlangen `2.6.0`) |
+| Windows Player | Development Build, zwei getrennte Prozesse |
+
+## Laufzeitnachweis
+
+Ein ausschließlich für den Versuch generierter Testaufbau enthielt einen NetworkManager mit Unity Transport, zwei automatisch gespawnte Player-Objekte mit `NetworkObject` und serverautoritativer `NetworkTransform` sowie ein vom Host gespawntes Rigidbody mit `NetworkObject`, `NetworkTransform` und `NetworkRigidbody`. Testbewegungen liefen deterministisch per `--autoplay`; der Host gab dem separat platzierten Rigidbody einen Impuls. Es wurde kein produktiver Gameplay-Code verwendet.
+
+- Editor- und Scriptkompilierung mit NGO `2.13.3`: erfolgreich; keine C#-Compilerfehler.
+- Windows Player Build: `SPIKE_BUILD result=Succeeded errors=0`.
+- Host und Client liefen als zwei Prozesse. Client-Log: `SPIKE_CONNECTED clientId=1`.
+- Beide Instanzen protokollierten Player `owner=0` und `owner=1` mit veränderlichen Positionen. Der Client sah die bewegte Host-Figur; der Host sah die bewegte Client-Figur.
+- Das Host-Rigidbody startete bei `(0, 2, -10)`. Der Host-Impuls wurde protokolliert (`SPIKE_BODY_HOST_IMPULSE applied=true`); Host und Client protokollierten anschließend übereinstimmend `(1.30, 0.50, -10.00)`. Das Objekt blieb auch nach dem Client-Abbruch beim Host vorhanden.
+- Der Client-Prozess wurde abrupt beendet. Nach dem Transport-Timeout meldete der Host `SPIKE_DISCONNECTED clientId=1 connected=1`; der Player mit `owner=1` erschien danach nicht mehr in den Host-Zustandslogs. Das Host-Rigidbody blieb gespawnt.
+
+Das ist eine lokale Windows-Laufzeitprüfung auf demselben Rechner. Eine normale Client-Beendigung, LAN-Verbindung zwischen Rechnern, Paketverlust, Latenz, Build auf einem frischen Checkout, Ownership-Übergabe, Gameplay-Integration und Vier-Spieler-Betrieb wurden nicht geprüft. Die UI-Fenster waren nicht über die Desktop-Fensterliste verfügbar; Positionsevidenz stammt daher aus den Laufzeitlogs.
+
+## Reproduzierbare Schritte
+
+1. Projekt mit `C:\6000.6.8f1\Editor\Unity.exe` öffnen und in einem isolierten Spike-Projekt NGO `2.13.3` über den Package Manager installieren. Der in diesem Versuch nötige Registry-Zugriff auf `packages.unity.com` muss verfügbar sein.
+2. Eigene `NetcodeSpike`-Szene und Player-Prefab erstellen. Player-Prefab: `NetworkObject`, `NetworkTransform`, lokale Testbewegung, die über Server-RPCs auf dem Host angewendet wird. Im NetworkManager das Player-Prefab registrieren und Unity Transport konfigurieren.
+3. Ein getrenntes Rigidbody-Prefab mit `NetworkObject`, `NetworkTransform`, `NetworkRigidbody` und `Rigidbody` registrieren. Der Host spawnt dieses Objekt und wendet den Impuls serverseitig an.
+4. Zwei Development-Player aus der Spike-Szene bauen. Host und Client auf demselben Rechner nacheinander starten (Port `7777`):
+
+   ```powershell
+   .\NetcodeSpike.exe --host --autoplay -logFile host-player.log
+   .\NetcodeSpike.exe --client --autoplay -logFile client-player.log
+   ```
+
+5. In beiden Logs `SPIKE_CONNECTED`, Positionsänderungen beider Player und die Rigidbody-Positionen vergleichen. Den Client-Prozess abrupt schließen; nach dem NGO/Transport-Timeout im Host-Log `SPIKE_DISCONNECTED` und das Entfernen des Client-Players prüfen.
+
+Die Szene, Build-Dateien, temporären Skripte und Logs wurden nur im Worktree für diesen Versuch erzeugt und sind nicht Teil des Ergebnis-Commits. Die beiden Fenster wurden in der Versuchskonfiguration mit `800x600` und `-screen-fullscreen 0` gestartet.
 
 ## Offizielle Paketinfos
 
-- [Unity 6.0 Paketübersicht: Netcode for GameObjects](https://docs.unity3d.com/6000.0/Documentation/Manual/com.unity.netcode.gameobjects.html): NGO ist ein High-Level-Netcode-SDK für GameObject/MonoBehaviour-Workflows. Die Tabelle listet `com.unity.netcode.gameobjects` 2.7.0 als Pre-release für Unity 6000.0.
-- [Unity 6.0 Paketübersicht: Unity Transport](https://docs.unity3d.com/6000.0/Documentation/Manual/com.unity.transport.html): Transport ist die Low-Level-Netzwerk- und Transportebene. Die Paketübersicht beschreibt die Unity-6.0-Verfügbarkeit.
-- Diese Übersichten gelten ausdrücklich für 6000.0. Für 6000.6.8f1 ist die Kompatibilität hier nicht belegt.
+- [Netcode for GameObjects für Unity 6000.6](https://docs.unity3d.com/6000.6/Documentation/Manual/com.unity.netcode.gameobjects.html): `2.13.3`, Pre-release; NGO passt zum GameObject/MonoBehaviour-Workflow des MVP.
+- [Netcode for GameObjects für Unity 6000.0](https://docs.unity3d.com/ja/current/Manual/com.unity.netcode.gameobjects.html): `2.7.0` ist dort Released für `6000.0`; der lokale Compilerfehler zeigt, dass dies keine Kompatibilitätszusage für `6000.6.8f1` ist.
+- [Unity Transport für Unity 6000.6](https://docs.unity3d.com/6000.6/Documentation/Manual/com.unity.transport.html): Transport ist eine Core-Paketebene, die an die Editor-Version gebunden ist.
 
-## Versuch und Reproduzierbarkeit
+## Grenzen
 
-Untersuchte Basis: Commit `5835246`, Branch `issue/3-netzcode-prototyp`. Der Projektstand nennt exakt `6000.6.8f1 (237b6593792b)`.
-
-1. Projekt im angegebenen Editor öffnen: `C:\6000.6.8f1\Editor\Unity.exe -projectPath <Projektordner>`.
-2. Wenn der Editor samt Lizenz initialisiert ist, in einer ausschließlich für den Versuch angelegten Szene NGO `2.7.0` über den Package Manager installieren. Manifest und Lockfile nur in diesem Wegwerfversuch ändern.
-3. In dieser Szene einen `NetworkManager` mit Unity Transport, zwei Network-Player-Objekten mit `NetworkObject` und `NetworkTransform` sowie ein gemeinsames Rigidbody-Objekt mit `NetworkObject`, `NetworkRigidbody` und `NetworkTransform` anlegen. Das Rigidbody läuft serverseitig/hostautoritativ; den Host steuert es per einfacher Eingabe.
-4. Host und Client in zwei lokalen Instanzen starten. Beide Spieler bewegen und prüfen, dass ihre Positionen auf beiden Instanzen sichtbar sind. Das Rigidbody durch den Host bewegen und die replizierte Position vergleichen.
-5. Client normal schließen und protokollieren, ob sein Player-Objekt entfernt wird und was mit dem Rigidbody geschieht. Danach abrupten Client-Abbruch gesondert prüfen.
-
-Schritte 2–5 wurden wegen des Editor-Abbruchs bei der Licensing-Initialisierung nicht ausgeführt. Die angegebene Komponentenliste und Testabfolge sind ein vorgeschlagener Reproduktionsplan, keine beobachteten Ergebnisse.
-
-## Grenzen und offene Kriterien
-
-- Kein isoliertes Unity-Testscene-Asset oder Prototyp wurde erstellt.
-- Keine Pakete wurden in den finalen Projektdateien hinterlegt; NGO-Installationsversuch scheiterte vor Paketauflösung. Es gibt daher keine validierte vollständige Paketversionsliste.
-- Zwei Instanzen, gegenseitige Positionssichtbarkeit, hostgesteuertes Rigidbody-Verhalten sowie normales und abruptes Trennen sind ungetestet.
-- Keine Aussage zu LAN außerhalb des lokalen Rechners, Latenz, Paketverlust, Lobby/Matchmaking, Sicherheit, Ownership-Übergabe oder Builds.
-- Für S2-C sollte ein Reviewer mit funktionierendem Unity-Lizenzclient den isolierten Versuch ausführen, Screenshots/Logs oder ein kurzes Protokoll sichern und Paketauflösung sowie Client-Bereinigung bestätigen, bevor das Paket in `Packages/` aufgenommen wird.
+Der Versuch prüft nur direkten lokalen Host/Client-Verkehr, einfache Positionssynchronisierung, hostautoritative Physik und abrupten Client-Prozessabbruch. Es ist kein produktiver Netcode, keine Sicherheitsbewertung und keine Aussage zu Sitzungsverwaltung oder Internet-Hosting. NGO `2.13.3` bleibt ein Pre-release; diese Status- und Versionsbindung muss S2-C explizit übernehmen und gegen die im Projekt verwendete Editor-Version erneut prüfen.
