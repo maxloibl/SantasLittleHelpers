@@ -38,9 +38,17 @@ namespace SantasLittleHelpers.AI
         private Vector3 investigationPoint;
         private bool hasInvestigationPoint;
         private float continuousSight;
+        private Vector3 startPosition;
+        private Quaternion startRotation;
         public ResidentState State => state;
         public float Alarm => alarm;
         public Transform Target { get => target; set => target = value; }
+
+        private void Awake()
+        {
+            startPosition = transform.position;
+            startRotation = transform.rotation;
+        }
 
         /// <summary>Notify this resident of a sound. Intensity is normalized to 0..1.</summary>
         public void ReportNoise(Vector3 position, float intensity)
@@ -55,6 +63,16 @@ namespace SantasLittleHelpers.AI
             alarm = Mathf.Max(alarm, intensity);
             if (state != ResidentState.Chasing)
                 state = ResidentState.Investigating;
+        }
+
+        public void ResetForRound()
+        {
+            state = ResidentState.Patrolling;
+            alarm = 0f;
+            continuousSight = 0f;
+            hasInvestigationPoint = false;
+            patrolIndex = 0;
+            transform.SetPositionAndRotation(startPosition, startRotation);
         }
 
         /// <summary>Public deterministic step also used by the batch smoke check.</summary>
