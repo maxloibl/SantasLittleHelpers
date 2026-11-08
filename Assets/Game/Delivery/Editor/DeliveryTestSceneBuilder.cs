@@ -21,7 +21,7 @@ namespace SantasLittleHelpers.Editor
             target.name = "Required Gift (deliver this one)"; target.transform.position = new Vector3(0, .35f, 2);
             GameObject distractor = PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Game/Gifts/Prefabs/HeavyGift.prefab")) as GameObject;
             distractor.name = "Other Gift (does not count)"; distractor.transform.position = new Vector3(2, .5f, 3);
-            GameObject player = new GameObject("Solo Player"); player.layer = 8; player.transform.position = new Vector3(0,0,-4);
+            GameObject player = new GameObject("Solo Player"); player.layer = 8; player.transform.position = new Vector3(0,0,-2.5f);
             CharacterController character = player.AddComponent<CharacterController>(); character.height=1.8f; character.radius=.35f; character.center=new Vector3(0,.9f,0);
             GameObject view = new GameObject("View Camera"); view.layer=8; view.tag="MainCamera"; view.transform.SetParent(player.transform,false); view.transform.localPosition=new Vector3(0,1.6f,0);
             Camera camera = view.AddComponent<Camera>(); view.AddComponent<AudioListener>();
@@ -50,7 +50,14 @@ namespace SantasLittleHelpers.Editor
             GiftCarryable other = GameObject.Find("Other Gift (does not count)").GetComponent<GiftCarryable>();
             if (round == null || zone == null || player == null || target == null || other == null)
                 throw new System.Exception("Delivery smoke setup is incomplete.");
+            Transform sleigh = GameObject.Find("Sleigh (start and return)").transform;
+            Vector3 expectedStartPosition = player.transform.position;
+            Quaternion expectedStartRotation = player.transform.rotation;
             typeof(DeliveryRoundController).GetMethod("Awake", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Invoke(round, null);
+            Physics.SyncTransforms();
+            if (Physics.ComputePenetration(player.GetComponent<CharacterController>(), player.transform.position, player.transform.rotation,
+                    sleigh.GetComponent<Collider>(), sleigh.position, sleigh.rotation, out _, out _))
+                throw new System.Exception("Player start pose overlaps the sleigh collider.");
             zone.TryHandleGift(other);
             if (round.IsDelivered) throw new System.Exception("Wrong gift was counted.");
             zone.TryHandleGift(target);
@@ -63,6 +70,9 @@ namespace SantasLittleHelpers.Editor
             round.RestartRound();
             if (round.State != DeliveryRoundState.DeliverGift || round.IsDelivered)
                 throw new System.Exception("Restart did not reset round progress.");
+            if ((player.transform.position - expectedStartPosition).sqrMagnitude > .001f ||
+                Quaternion.Angle(player.transform.rotation, expectedStartRotation) > .1f)
+                throw new System.Exception("Restart did not restore the collision-free player start pose.");
             if ((target.transform.position - new Vector3(0, .35f, 2)).sqrMagnitude > .001f)
                 throw new System.Exception("Restart did not restore the gift position.");
             Debug.Log("DELIVERY_SMOKE_PASS: wrong gift ignored; correct gift counted once; return completed; restart restored round and gift.");

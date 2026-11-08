@@ -18,6 +18,8 @@ namespace SantasLittleHelpers.Delivery
         private DeliveryRoundState state;
         private bool delivered;
         private string status = "Bring the marked gift to the delivery point.";
+        private Vector3 playerStartPosition;
+        private Quaternion playerStartRotation;
         public DeliveryRoundState State => state;
         public bool IsDelivered => delivered;
         public event Action<DeliveryRoundState> StateChanged;
@@ -32,6 +34,8 @@ namespace SantasLittleHelpers.Delivery
             }
             foreach (GiftCarryable gift in FindObjectsByType<GiftCarryable>(FindObjectsSortMode.None))
                 snapshots.Add(gift, new GiftSnapshot(gift));
+            playerStartPosition = player.position;
+            playerStartRotation = player.rotation;
             state = DeliveryRoundState.DeliverGift;
         }
 
@@ -64,7 +68,7 @@ namespace SantasLittleHelpers.Delivery
         {
             foreach (KeyValuePair<GiftCarryable, GiftSnapshot> entry in snapshots)
                 if (entry.Key != null) entry.Value.Restore(entry.Key);
-            player.SetPositionAndRotation(sleigh.position, sleigh.rotation);
+            player.SetPositionAndRotation(playerStartPosition, playerStartRotation);
             delivered = false;
             state = DeliveryRoundState.DeliverGift;
             status = "Bring the marked gift to the delivery point.";
