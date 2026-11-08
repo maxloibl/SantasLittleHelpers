@@ -6,7 +6,7 @@ Generated in Unity from **Tools > Networking > Build Movement Test Scene**. This
 
 1. Open with Unity `6000.6.8f1` and build `Assets/Game/Networking/Scenes/NetworkMovementTest.unity` as a Development Build (Windows x86_64).
 2. Start one process, click **Start Host**; start a second process, enter `127.0.0.1` and click **Join as Client**. Both use UDP port `7777`.
-3. Click in the game view to capture the cursor. Use WASD and mouse look. Press Escape to release the cursor.
+3. Look for the other player's capsule and verify that its movement appears in both windows.
 4. Use **Disconnect / Stop Host** to stop normally. The host should despawn a disconnected client's player.
 
 For repeatable local verification, the test player accepts `--host` or `--client` to start automatically and `--autoplay` to move the local owner through the existing `FirstPersonController`'s `CharacterController`. Add `--shutdown-after=12` to a client to call `NetworkManager.Shutdown()` normally after twelve seconds.
