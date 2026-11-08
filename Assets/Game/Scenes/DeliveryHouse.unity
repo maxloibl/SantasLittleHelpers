@@ -220,7 +220,7 @@ MonoBehaviour:
   reach: 2.5
   giftLayers:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 4294967039
   carryAnchor: {fileID: 1851769031}
 --- !u!1 &200
 GameObject:
