@@ -50,7 +50,10 @@ namespace SantasLittleHelpers.Capture.Editor
             residentSerialized.ApplyModifiedPropertiesWithoutUndo();
             ResidentCaptureContact contact = residentObject.AddComponent<ResidentCaptureContact>();
             SerializedObject rso = new SerializedObject(contact); rso.FindProperty("resident").objectReferenceValue = resident; rso.ApplyModifiedPropertiesWithoutUndo();
-            GameObject coordinator = new GameObject("Capture Round Coordinator"); coordinator.AddComponent<NetworkObject>(); coordinator.AddComponent<CaptureRoundCoordinator>(); coordinator.AddComponent<CaptureSmokeAutomation>();
+            GameObject coordinator = new GameObject("Capture Round Coordinator"); coordinator.AddComponent<NetworkObject>();
+            CaptureRoundCoordinator round = coordinator.AddComponent<CaptureRoundCoordinator>();
+            SerializedObject roundSerialized = new SerializedObject(round); roundSerialized.FindProperty("captureRadius").floatValue = 1.2f; roundSerialized.ApplyModifiedPropertiesWithoutUndo();
+            coordinator.AddComponent<CaptureSmokeAutomation>();
             net.AddComponent<CaptureTestNetworkJoin>();
             EditorSceneManager.SaveScene(scene, ScenePath); AssetDatabase.SaveAssets();
         }

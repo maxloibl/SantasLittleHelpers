@@ -31,7 +31,7 @@ namespace SantasLittleHelpers.Capture
         {
             ApplyLock(current);
             CaptureChanged?.Invoke(current);
-            Debug.Log($"CAPTURE_STATE player={OwnerClientId} captured={current} peer={NetworkManager.LocalClientId}");
+            Debug.Log($"CAPTURE_STATE player={OwnerClientId} captured={current} movementEnabled={(controller != null && controller.enabled)} peer={NetworkManager.LocalClientId}");
         }
 
         private void ApplyLock(bool locked)

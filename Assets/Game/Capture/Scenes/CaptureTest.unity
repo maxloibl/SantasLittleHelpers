@@ -443,7 +443,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Capture.CaptureRoundCoordinator
   ShowTopMostFoldoutHeaderGroup: 1
-  captureRadius: 1.6
+  captureRadius: 1.2
   releaseRadius: 2
 --- !u!114 &1790845121
 MonoBehaviour:
