@@ -32,7 +32,7 @@
 
 ## 4. Windows-Player bauen und starten
 
-Voraussetzungen: Git, Unity **6000.6.8f1** samt Modul **Windows Build Support (Mono)** und ein freier UDP-Port **7777**. PowerShell-Befehle im frischen Checkout:
+Voraussetzungen: Git, Unity **6000.6.8f1** samt Modul **Windows Build Support (Mono)** und ein freier UDP-Port (Vorgabe **7777**). PowerShell-Befehle im frischen Checkout:
 
 ```powershell
 git clone https://github.com/maxloibl/SantasLittleHelpers.git
@@ -47,7 +47,7 @@ Der Befehl endet erfolgreich mit `WINDOWS_BUILD result=Succeeded`; das Log liegt
 & 'C:/tmp/slh13-windows/DeliveryHouse.exe'
 ```
 
-Im Menü **Play Solo** startet die Mission lokal. **Start Host** öffnet einen Host und wartet auf genau einen Mitspieler. Auf einem zweiten Rechner **Join as Client** wählen und die lokale IPv4-Adresse des Hosts eintragen; localhost (`127.0.0.1`) funktioniert nur für zwei Prozesse auf demselben Rechner. Beide verwenden UDP **7777**. Firewall und Netzwerk müssen eingehende UDP-Verbindungen auf diesem Port zulassen. Der Host bindet an alle Netzwerkschnittstellen; es gibt keine Relay-, NAT-Traversal- oder IPv6-Unterstützung. Port-Weiterleitung außerhalb eines LANs ist nicht Teil des geprüften Starts.
+Im Menü **Play Solo** startet die Mission lokal. **Start Host** öffnet einen Host für bis zu drei Clients (vier Spieler insgesamt). Die Vier-Spieler-Abnahme lief mit vier lokalen Prozessen über localhost (`127.0.0.1`) und denselben ausgewählten UDP-Port. Ein LAN-Lauf zwischen verschiedenen Rechnern wurde nicht geprüft. Die Verbindung verwendet direkte IPv4 ohne Relay, NAT-Traversal oder IPv6; der Host bindet an alle Netzwerkschnittstellen.
 
 Steuerung im Player: **W/A/S/D** laufen, **Maus** umsehen, **E** Geschenk aufnehmen/ablegen bzw. einen nahen Mitspieler befreien, **Shift** sprinten, **Strg/C** ducken, **Leertaste** springen. Bei Gefangennahme stoppt die Bewegung; zum Neustart nach einer abgeschlossenen Solo-Runde oder verlorenen Koop-Runde **R** drücken. **Esc** gibt den Mauszeiger frei; Klick ins Spielfenster fängt ihn wieder ein. Alt+Tab wechselt das Fenster.
 
@@ -57,7 +57,7 @@ Für einen automatisierten Solo-Lauf des echten Players kann die Mission mit `--
 & 'C:/tmp/slh13-windows/DeliveryHouse.exe' --solo-smoke --shutdown-after=8 -logFile C:/tmp/slh13-windows/solo-smoke.log
 ```
 
-Bekannte Grenzen: Der Player wurde als Windows-x64-Mono-Build erstellt. Der Menü-Host unterstützt einen Client (zwei Spieler insgesamt); vier Spieler, WAN-Verbindungen und umfangreiche Netzfehler-/Disconnect-Abnahme sind nicht zugesichert. Die Solo-Runde ist spielbar; dieser Build-Schritt garantiert keine vollständige Gameplay-Abnahme.
+Bekannte Grenzen: Der Player wurde als Windows-x64-Mono-Build erstellt. Die Abnahme deckt Solo sowie bis zu vier Prozesse auf localhost ab. LAN-/WAN-Verbindungen und weitere Fehlerfälle jenseits der dokumentierten Disconnect-Tests wurden nicht geprüft.
 
 ## 5. Aufbau im Editor
 
