@@ -157,8 +157,7 @@ namespace SantasLittleHelpers.Delivery
 
         private void OnServerStarted()
         {
-            bool quietSmoke = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--coop-quiet-smoke");
-            var networkResidents = new ResidentBrain[quietSmoke ? 0 : residents.Length];
+            var networkResidents = new ResidentBrain[residents.Length];
             for (int i = 0; i < networkResidents.Length; i++)
             {
                 Vector3 position = residents[i] != null ? residents[i].transform.position : Vector3.zero;

@@ -32,8 +32,27 @@ namespace SantasLittleHelpers.Delivery
         private bool smokeRestarted;
         private bool quietDeliveryReported;
         private bool quietReturnReported;
+        private bool quietResidentHealthy = true;
+        private bool quietResidentMoved;
+        private bool quietResidentHasSample;
+        private bool quietResidentFailureReported;
+        private float quietNextResidentSampleAt;
+        private Vector3 quietResidentLastPosition;
+        private readonly HashSet<ulong> quietHouseVisited = new HashSet<ulong>();
         public int CurrentPhase => phase.Value;
         public bool IsTerminal => phase.Value >= 2;
+        public bool QuietPassengerReturnedAfterHouseVisit
+        {
+            get
+            {
+                if (!IsServer || sleigh == null) return false;
+                foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+                    if (client.ClientId != NetworkManager.ServerClientId)
+                        return quietHouseVisited.Contains(client.ClientId) && client.PlayerObject != null &&
+                               Vector3.Distance(client.PlayerObject.transform.position, sleigh.position) <= 2.3f;
+                return false;
+            }
+        }
 
         public void Initialize(GameObject light, GameObject heavy, Transform home, Collider delivery, ResidentBrain[] brains)
         {
@@ -181,14 +200,25 @@ namespace SantasLittleHelpers.Delivery
         private void TickQuietSmoke()
         {
             if (NetworkManager.ConnectedClientsList.Count < 2) return;
+            TickQuietResidentProof();
+            foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+            {
+                if (client.PlayerObject == null) continue;
+                Vector3 position = client.PlayerObject.transform.position;
+                if (!quietHouseVisited.Contains(client.ClientId) && position.x < -1f && position.z > 4f)
+                {
+                    quietHouseVisited.Add(client.ClientId);
+                    Debug.Log($"COOP_QUIET_PLAYER_IN_HOUSE owner={client.ClientId} position={position}");
+                }
+            }
             if (phase.Value == 1 && !quietDeliveryReported)
             {
                 CapturedPlayerState[] players = FindObjectsByType<CapturedPlayerState>();
                 bool allFree = true;
                 foreach (CapturedPlayerState player in players) if (player.IsSpawned && player.IsCaptured) allFree = false;
-                if (allFree)
+                if (allFree && quietResidentHealthy && quietResidentMoved)
                 {
-                    Debug.Log($"COOP_QUIET_DELIVERY_PASS progress={delivered.Value} allPlayersFree=true");
+                    Debug.Log($"COOP_QUIET_DELIVERY_PASS progress={delivered.Value} allPlayersFree=true residentPatrolMoved=true residentAlarm=0 capture=false");
                     quietDeliveryReported = true;
                 }
             }
@@ -198,10 +228,52 @@ namespace SantasLittleHelpers.Delivery
                 foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
                     if (client.PlayerObject == null || Vector3.Distance(client.PlayerObject.transform.position, sleigh.position) > 2.3f ||
                         client.PlayerObject.GetComponent<CapturedPlayerState>()?.IsCaptured == true) allHome = false;
-                if (allHome)
+                if (allHome && quietHouseVisited.Count == NetworkManager.ConnectedClientsList.Count && quietResidentHealthy && quietResidentMoved)
                 {
-                    Debug.Log($"COOP_QUIET_RETURN_PASS players={NetworkManager.ConnectedClientsList.Count} phase={phase.Value} progress={delivered.Value} allPlayersFree=true");
+                    Debug.Log($"COOP_QUIET_RETURN_PASS players={NetworkManager.ConnectedClientsList.Count} phase={phase.Value} progress={delivered.Value} allPlayersFree=true bothVisitedHouse=true residentPatrolMoved=true residentAlarm=0 capture=false");
                     quietReturnReported = true;
+                }
+            }
+        }
+
+        private void TickQuietResidentProof()
+        {
+            if (residents == null || residents.Length == 0 || residents[0] == null)
+            {
+                quietResidentHealthy = false;
+                if (!quietResidentFailureReported)
+                {
+                    Debug.Log("COOP_QUIET_RESIDENT_FAIL present=false");
+                    quietResidentFailureReported = true;
+                }
+                return;
+            }
+            ResidentBrain resident = residents[0];
+            if (!quietResidentHasSample)
+            {
+                quietResidentHasSample = true;
+                quietResidentLastPosition = resident.transform.position;
+                quietNextResidentSampleAt = Time.unscaledTime + 1f;
+            }
+            if (Time.unscaledTime >= quietNextResidentSampleAt)
+            {
+                float moved = Vector3.Distance(quietResidentLastPosition, resident.transform.position);
+                if (moved > .05f && !quietResidentMoved)
+                {
+                    quietResidentMoved = true;
+                    Debug.Log($"COOP_QUIET_RESIDENT_PATROL_MOVE_PASS from={quietResidentLastPosition} to={resident.transform.position} delta={moved:0.00}");
+                }
+                quietResidentLastPosition = resident.transform.position;
+                quietNextResidentSampleAt = Time.unscaledTime + 1f;
+            }
+            bool captured = FindCapturedPlayer() != null;
+            if (resident.State != ResidentState.Patrolling || resident.Alarm > .001f || captured)
+            {
+                quietResidentHealthy = false;
+                if (!quietResidentFailureReported)
+                {
+                    Debug.Log($"COOP_QUIET_RESIDENT_FAIL state={resident.State} alarm={resident.Alarm:0.000} captured={captured} position={resident.transform.position}");
+                    quietResidentFailureReported = true;
                 }
             }
         }

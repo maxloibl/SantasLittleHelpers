@@ -15,6 +15,8 @@ namespace SantasLittleHelpers.Delivery
         private bool rescueRequested;
         private bool moving;
         private bool quietGripRequested;
+        private bool quietGripConfirmed;
+        private bool quietGripTimeoutReported;
         private int quietRouteStage;
         private float quietStageAt;
         private float lastMoveProgressAt;
@@ -79,10 +81,11 @@ namespace SantasLittleHelpers.Delivery
 
         private void TickQuietCarry()
         {
-            if (OwnerClientId != NetworkManager.ServerClientId) return;
+            if (OwnerClientId != NetworkManager.ServerClientId) { TickQuietPassenger(); return; }
             TickMove();
             NetworkGiftCarryable light = FindLight();
-            if (quietRouteStage == 0 && !moving && !quietGripRequested)
+            CoopNetworkRound round = FindFirstObjectByType<CoopNetworkRound>();
+            if (quietRouteStage == 0 && !moving && !quietGripRequested && round != null && round.QuietPassengerReturnedAfterHouseVisit)
             {
                 BeginMove(new Vector3(-1.1f, .05f, -4.8f), "quiet-pickup");
                 quietRouteStage = 1;
@@ -96,6 +99,7 @@ namespace SantasLittleHelpers.Delivery
             }
             if (quietRouteStage == 1 && quietGripRequested && light != null && light.HasLocalGrip && !moving)
             {
+                quietGripConfirmed = true;
                 Debug.Log("COOP_QUIET_GRIP_CONFIRMED owner=0 gift=light");
                 BeginMove(new Vector3(0f, .05f, 2f), "quiet-door"); quietRouteStage = 2;
             }
@@ -103,7 +107,6 @@ namespace SantasLittleHelpers.Delivery
             if (quietRouteStage == 3 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 4f), "quiet-barrier-passage"); quietRouteStage = 4; }
             if (quietRouteStage == 4 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 10f), "quiet-delivery-approach"); quietRouteStage = 5; }
             if (quietRouteStage == 5 && !moving) { BeginMove(new Vector3(-4f, transform.position.y, 10f), "quiet-delivery"); quietRouteStage = 6; }
-            CoopNetworkRound round = FindFirstObjectByType<CoopNetworkRound>();
             if (quietRouteStage == 6 && !moving && round != null && round.CurrentPhase == 1)
             {
                 BeginMove(new Vector3(-6.3f, transform.position.y, 10f), "quiet-return-passage"); quietRouteStage = 7;
@@ -112,8 +115,33 @@ namespace SantasLittleHelpers.Delivery
             if (quietRouteStage == 8 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 4f), "quiet-return-house"); quietRouteStage = 9; }
             if (quietRouteStage == 9 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 2f), "quiet-return-door"); quietRouteStage = 10; }
             if (quietRouteStage == 10 && !moving) { BeginMove(new Vector3(-.8f, transform.position.y, -6.25f), "quiet-return-home"); quietRouteStage = 11; }
-            if (quietRouteStage == 1 && Time.unscaledTime - quietStageAt > 8f)
+            if (quietGripRequested && !quietGripConfirmed && !quietGripTimeoutReported && Time.unscaledTime - quietStageAt > 8f)
+            {
                 Debug.Log("COOP_QUIET_GRIP_TIMEOUT light=" + (light != null));
+                quietGripTimeoutReported = true;
+            }
+        }
+
+        private void TickQuietPassenger()
+        {
+            TickMove();
+            if (quietRouteStage == 0 && !moving && Time.unscaledTime >= 2f)
+            {
+                BeginMove(new Vector3(3.5f, transform.position.y, -6.25f), "quiet-client-clear-sleigh"); quietRouteStage = 1;
+            }
+            if (quietRouteStage == 1 && !moving) { BeginMove(new Vector3(3.5f, transform.position.y, 2f), "quiet-client-door-approach"); quietRouteStage = 2; }
+            if (quietRouteStage == 2 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 2f), "quiet-client-door-entry"); quietRouteStage = 3; }
+            if (quietRouteStage == 3 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 4f), "quiet-client-house-entry"); quietRouteStage = 4; }
+            if (quietRouteStage == 4 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 4f), "quiet-client-barrier-passage"); quietRouteStage = 5; }
+            if (quietRouteStage == 5 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 10f), "quiet-client-delivery-approach"); quietRouteStage = 6; }
+            if (quietRouteStage == 6 && !moving) { BeginMove(new Vector3(-4f, transform.position.y, 10f), "quiet-client-delivery"); quietRouteStage = 7; }
+            if (quietRouteStage == 7 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 10f), "quiet-client-return-passage"); quietRouteStage = 8; }
+            if (quietRouteStage == 8 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 4f), "quiet-client-return-barrier"); quietRouteStage = 9; }
+            if (quietRouteStage == 9 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 4f), "quiet-client-return-house"); quietRouteStage = 10; }
+            if (quietRouteStage == 10 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 2f), "quiet-client-return-door"); quietRouteStage = 11; }
+            if (quietRouteStage == 11 && !moving) { BeginMove(new Vector3(3.5f, transform.position.y, 2f), "quiet-client-clear-door"); quietRouteStage = 12; }
+            if (quietRouteStage == 12 && !moving) { BeginMove(new Vector3(3.5f, transform.position.y, -6.25f), "quiet-client-return-sleigh-approach"); quietRouteStage = 13; }
+            if (quietRouteStage == 13 && !moving) { BeginMove(new Vector3(.8f, transform.position.y, -6.25f), "quiet-client-return-home"); quietRouteStage = 14; }
         }
 
         private void BeginMove(Vector3 position, string stage)
