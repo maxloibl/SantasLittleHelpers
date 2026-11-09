@@ -100,11 +100,23 @@ namespace SantasLittleHelpers.Delivery
 
         private void OnClientDisconnected(ulong clientId)
         {
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-smoke"))
+            {
+                StartCoroutine(LogDisconnectCleanupAfterCallbacks(clientId));
+            }
             if (playerStartSlots.TryGetValue(clientId, out int slot))
                 Debug.Log($"COOP_PLAYER_SLOT_RELEASED owner={clientId} slot={slot}");
             playerStarts.Remove(clientId);
             playerStartSlots.Remove(clientId);
             playerPoseReported.Remove(clientId);
+        }
+
+        private System.Collections.IEnumerator LogDisconnectCleanupAfterCallbacks(ulong clientId)
+        {
+            yield return null;
+            NetworkGiftCarryable heavy = heavyGift != null ? heavyGift.GetComponent<NetworkGiftCarryable>() : null;
+            int gripCount = heavy != null ? heavy.GripCount : -1;
+            Debug.Log($"COOP_SMOKE_DISCONNECT_CLEANUP owner={clientId} heavyGripCount={gripCount} pass={gripCount == 1}");
         }
 
         public void InitializePlayer(ulong clientId)

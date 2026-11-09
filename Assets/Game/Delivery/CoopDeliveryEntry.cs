@@ -100,7 +100,8 @@ namespace SantasLittleHelpers.Delivery
             gift.transform.position = deliveryPosition;
             Physics.SyncTransforms();
             bool delivered = zone.TryHandleGift(gift);
-            Debug.Log($"SOLO_SMOKE_DELIVERY delivered={delivered} state={soloRound.State} position={deliveryPosition}");
+            bool duplicateRejected = !zone.TryHandleGift(gift);
+            Debug.Log($"SOLO_SMOKE_DELIVERY delivered={delivered} duplicateRejected={duplicateRejected} state={soloRound.State} position={deliveryPosition}");
             if (sleigh != null)
             {
                 Vector3 returnPosition = sleigh.position; returnPosition.y = .05f;
@@ -110,7 +111,9 @@ namespace SantasLittleHelpers.Delivery
             bool completed = soloRound.State == DeliveryRoundState.Complete;
             soloRound.RestartRound();
             bool reset = soloRound.State == DeliveryRoundState.DeliverGift && !soloRound.IsDelivered;
-            Debug.Log($"SOLO_SMOKE_PASS pickedUp={pickedUp} delivered={delivered} returned={completed} reset={reset}");
+            bool passed = pickedUp && delivered && duplicateRejected && completed && reset;
+            Debug.Log($"SOLO_SMOKE_{(passed ? "PASS" : "FAIL")} pickedUp={pickedUp} delivered={delivered} duplicateRejected={duplicateRejected} returned={completed} reset={reset}");
+            if (!passed) Application.Quit(1);
         }
 
         private void StartNetwork(bool host)
