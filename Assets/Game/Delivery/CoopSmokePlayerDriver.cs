@@ -27,6 +27,8 @@ namespace SantasLittleHelpers.Delivery
         private void Update()
         {
             if (!IsOwner || !IsSpawned) return;
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-disconnect-smoke"))
+            { TickDisconnectSmoke(); return; }
             if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-quiet-smoke"))
             { TickQuietCarry(); return; }
             if (!System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-smoke")) return;
@@ -76,6 +78,27 @@ namespace SantasLittleHelpers.Delivery
                 home.y = .05f;
                 BeginMove(home + new Vector3(OwnerClientId == NetworkManager.ServerClientId ? -.8f : .8f, 0, 1.75f), "return");
                 movedToSleigh = true;
+            }
+        }
+
+        private void TickDisconnectSmoke()
+        {
+            TickMove();
+            if (!movedToHeavy && Time.unscaledTime > 3f)
+            {
+                Vector3 position = new Vector3(OwnerClientId == NetworkManager.ServerClientId ? .15f : 2.05f, 0, -4.0f);
+                BeginMove(position, "disconnect-heavy-grip");
+                movedToHeavy = true;
+            }
+            if (!requestedHeavyGrip && Time.unscaledTime > 4f)
+            {
+                NetworkGiftCarryable heavy = FindHeavy();
+                if (heavy != null && heavy.IsSpawned)
+                {
+                    heavy.RequestGrip(true);
+                    requestedHeavyGrip = true;
+                    Debug.Log($"COOP_DISCONNECT_GRIP_REQUEST owner={OwnerClientId} gift=heavy");
+                }
             }
         }
 

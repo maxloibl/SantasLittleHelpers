@@ -41,6 +41,7 @@ namespace SantasLittleHelpers.Delivery
         private bool smokeDeliveryPlaced;
         private bool smokeRestarted;
         private bool smokeFourPlayerResetStarted;
+        private bool disconnectPreLogged;
         private bool quietDeliveryReported;
         private bool quietReturnReported;
         private bool quietResidentHealthy = true;
@@ -100,7 +101,7 @@ namespace SantasLittleHelpers.Delivery
 
         private void OnClientDisconnected(ulong clientId)
         {
-            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-smoke"))
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-disconnect-smoke"))
             {
                 StartCoroutine(LogDisconnectCleanupAfterCallbacks(clientId));
             }
@@ -116,7 +117,11 @@ namespace SantasLittleHelpers.Delivery
             yield return null;
             NetworkGiftCarryable heavy = heavyGift != null ? heavyGift.GetComponent<NetworkGiftCarryable>() : null;
             int gripCount = heavy != null ? heavy.GripCount : -1;
-            Debug.Log($"COOP_SMOKE_DISCONNECT_CLEANUP owner={clientId} heavyGripCount={gripCount} pass={gripCount == 1}");
+            ulong hostId = NetworkManager != null ? NetworkManager.ServerClientId : ulong.MaxValue;
+            bool hostGrip = heavy != null && heavy.HasServerGrip(hostId);
+            bool ownerGrip = heavy != null && heavy.HasServerGrip(clientId);
+            bool pass = gripCount == 1 && hostGrip && !ownerGrip;
+            Debug.Log($"COOP_DISCONNECT_POST owner={clientId} ownerGrip={ownerGrip} hostOwner={hostId} hostGrip={hostGrip} gripCount={gripCount} pass={pass}");
         }
 
         public void InitializePlayer(ulong clientId)
@@ -207,6 +212,11 @@ namespace SantasLittleHelpers.Delivery
 
         private void TickSmoke()
         {
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-disconnect-smoke"))
+            {
+                TickDisconnectSmoke();
+                return;
+            }
             if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-quiet-smoke"))
             {
                 TickQuietSmoke();
@@ -274,6 +284,36 @@ namespace SantasLittleHelpers.Delivery
                 ResetRoundServer();
                 smokeRestarted = true;
                 Debug.Log($"COOP_SMOKE_RESTART_PASS phase={phase.Value} delivered={delivered.Value} players={NetworkManager.ConnectedClientsList.Count}");
+            }
+        }
+
+        private void TickDisconnectSmoke()
+        {
+            if (disconnectPreLogged || NetworkManager.ConnectedClientsList.Count < 2) return;
+            float elapsed = Time.unscaledTime - smokeStartedAt;
+            NetworkGiftCarryable heavy = FindSmokeGift(true);
+            NetworkClient host = null;
+            NetworkClient client = null;
+            foreach (NetworkClient peer in NetworkManager.ConnectedClientsList)
+            {
+                if (peer.ClientId == NetworkManager.ServerClientId) host = peer;
+                else client = peer;
+            }
+            bool hostGrip = host != null && heavy != null && heavy.HasServerGrip(host.ClientId);
+            bool clientGrip = client != null && heavy != null && heavy.HasServerGrip(client.ClientId);
+            bool owner0Grip = heavy != null && heavy.HasServerGrip(0);
+            bool owner1Grip = heavy != null && heavy.HasServerGrip(1);
+            bool passed = host != null && client != null && host.ClientId == 0 && client.ClientId == 1 &&
+                          hostGrip && clientGrip && owner0Grip && owner1Grip && heavy.GripCount == 2;
+            if (passed)
+            {
+                disconnectPreLogged = true;
+                Debug.Log($"COOP_DISCONNECT_PRE owner0Grip={owner0Grip} owner1Grip={owner1Grip} hostOwner={host.ClientId} hostGrip={hostGrip} clientOwner={client.ClientId} clientGrip={clientGrip} gripCount={heavy.GripCount} pass=true");
+            }
+            else if (elapsed > 15f)
+            {
+                disconnectPreLogged = true;
+                Debug.Log($"COOP_DISCONNECT_PRE owner0Grip={owner0Grip} owner1Grip={owner1Grip} hostOwner={(host != null ? host.ClientId : ulong.MaxValue)} hostGrip={hostGrip} clientOwner={(client != null ? client.ClientId : ulong.MaxValue)} clientGrip={clientGrip} gripCount={(heavy != null ? heavy.GripCount : -1)} pass=false");
             }
         }
 

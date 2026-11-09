@@ -27,7 +27,7 @@ namespace SantasLittleHelpers.Delivery
         [SerializeField] private ushort port = 7777;
         private NetworkManager manager;
         private bool menu = true;
-        private string message = "Choose Solo, Host, or Client. Local host and client use 127.0.0.1:7777.";
+        private string message = "Choose Solo or host a round for up to three clients. Local players use 127.0.0.1:7777.";
 
         private void Awake()
         {
@@ -62,9 +62,9 @@ namespace SantasLittleHelpers.Delivery
             if (!menu) return;
             GUILayout.BeginArea(new Rect(16, 16, 420, 270), GUI.skin.box);
             GUILayout.Label("Weihnachts Friendslop — DeliveryHouse");
-            GUILayout.Label("Solo keeps the original one-player round. Coop starts two players at the sleigh.");
+            GUILayout.Label("Solo keeps the one-player round. Host supports up to three clients (four players total).");
             GUILayout.Label("WASD move · mouse look · E grab/drop/rescue · Shift run · Ctrl/C crouch · Space jump · Esc free cursor.");
-            GUILayout.Label("Host and Client can connect directly on 127.0.0.1:7777, or enter a host address below.");
+            GUILayout.Label("For localhost, connect clients to 127.0.0.1 using the selected port.");
             if (GUILayout.Button("Play Solo")) StartSolo();
             GUILayout.Space(8);
             if (GUILayout.Button("Start Host")) StartNetwork(true);
@@ -136,7 +136,7 @@ namespace SantasLittleHelpers.Delivery
             manager.OnServerStarted += OnServerStarted;
             transport.SetConnectionData(address, port, "0.0.0.0");
             bool started = host ? manager.StartHost() : manager.StartClient();
-            message = started ? (host ? "Host started. Waiting for one client." : "Connecting to host…") : "Connection could not be started.";
+            message = started ? (host ? "Host started. Waiting for up to three clients." : "Connecting to host…") : "Connection could not be started.";
             if (!started) { Destroy(manager.gameObject); manager = null; }
             menu = !started;
             if (started && TryGetShutdownDelay(out float delay)) StartCoroutine(ShutdownNormallyAfter(delay));
