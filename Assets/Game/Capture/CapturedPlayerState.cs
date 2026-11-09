@@ -11,12 +11,14 @@ namespace SantasLittleHelpers.Capture
     {
         private readonly NetworkVariable<bool> captured = new NetworkVariable<bool>(false);
         private FirstPersonController controller;
+        private GiftInteractor giftInteractor;
         public bool IsCaptured => captured.Value;
         public event Action<bool> CaptureChanged;
 
         public override void OnNetworkSpawn()
         {
             controller = GetComponent<FirstPersonController>();
+            giftInteractor = GetComponent<GiftInteractor>();
             captured.OnValueChanged += HandleChanged;
             ApplyLock(captured.Value);
         }
@@ -36,7 +38,9 @@ namespace SantasLittleHelpers.Capture
 
         private void ApplyLock(bool locked)
         {
-            if (IsOwner && controller != null) controller.enabled = !locked;
+            if (!IsOwner) return;
+            if (controller != null) controller.enabled = !locked;
+            if (giftInteractor != null) giftInteractor.enabled = !locked;
         }
 
         internal void SetCapturedServer(bool value)
