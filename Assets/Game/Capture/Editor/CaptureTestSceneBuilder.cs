@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditor.Build.Reporting;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
@@ -35,15 +36,38 @@ namespace SantasLittleHelpers.Capture.Editor
             SerializedObject cso=new SerializedObject(controller); cso.FindProperty("viewPivot").objectReferenceValue=view.transform; cso.ApplyModifiedPropertiesWithoutUndo();
             player.AddComponent<CapturedPlayerState>();
             player.AddComponent<CaptureRescueInput>();
+            player.AddComponent<CaptureTestSpawnPlacement>();
             PrefabUtility.SaveAsPrefabAsset(player, Root + "/CaptureTestPlayer.prefab"); Object.DestroyImmediate(player);
             SerializedObject nso=new SerializedObject(manager); SerializedProperty config=nso.FindProperty("NetworkConfig"); SerializedProperty pp=config.FindPropertyRelative("PlayerPrefab"); pp.objectReferenceValue=AssetDatabase.LoadAssetAtPath<GameObject>(Root+"/CaptureTestPlayer.prefab"); nso.ApplyModifiedPropertiesWithoutUndo();
             GameObject residentObject = GameObject.CreatePrimitive(PrimitiveType.Capsule); residentObject.name = "Test Chasing Resident"; residentObject.transform.position = new Vector3(-4, 0, -3); residentObject.transform.rotation = Quaternion.identity;
             ResidentBrain resident = residentObject.AddComponent<ResidentBrain>();
+            SerializedObject residentSerialized = new SerializedObject(resident);
+            residentSerialized.FindProperty("sightRange").floatValue = 12f;
+            residentSerialized.FindProperty("fieldOfView").floatValue = 180f;
+            residentSerialized.FindProperty("chaseSightHold").floatValue = .3f;
+            residentSerialized.FindProperty("lineOfSightBlockers").intValue = 1 << 8;
+            residentSerialized.FindProperty("movementBlockers").intValue = 1 << 8;
+            residentSerialized.ApplyModifiedPropertiesWithoutUndo();
             ResidentCaptureContact contact = residentObject.AddComponent<ResidentCaptureContact>();
             SerializedObject rso = new SerializedObject(contact); rso.FindProperty("resident").objectReferenceValue = resident; rso.ApplyModifiedPropertiesWithoutUndo();
-            GameObject coordinator = new GameObject("Capture Round Coordinator"); coordinator.AddComponent<NetworkObject>(); coordinator.AddComponent<CaptureRoundCoordinator>();
+            GameObject coordinator = new GameObject("Capture Round Coordinator"); coordinator.AddComponent<NetworkObject>(); coordinator.AddComponent<CaptureRoundCoordinator>(); coordinator.AddComponent<CaptureSmokeAutomation>();
             net.AddComponent<CaptureTestNetworkJoin>();
             EditorSceneManager.SaveScene(scene, ScenePath); AssetDatabase.SaveAssets();
+        }
+
+        [MenuItem("Tools/Capture/Build Windows Smoke Player")]
+        public static void BuildWindowsSmokePlayer()
+        {
+            Build();
+            BuildPlayerOptions options = new BuildPlayerOptions
+            {
+                scenes = new[] { ScenePath },
+                locationPathName = "Builds/CaptureSmoke/CaptureSmoke.exe",
+                target = BuildTarget.StandaloneWindows64,
+                options = BuildOptions.Development | BuildOptions.AllowDebugging
+            };
+            BuildReport report = BuildPipeline.BuildPlayer(options);
+            Debug.Log($"CAPTURE_WINDOWS_BUILD result={report.summary.result} errors={report.summary.totalErrors} warnings={report.summary.totalWarnings}");
         }
     }
 }

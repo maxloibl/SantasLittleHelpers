@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
+using System.Collections;
 
 namespace SantasLittleHelpers.Capture
 {
@@ -28,6 +29,7 @@ namespace SantasLittleHelpers.Capture
             string[] args = System.Environment.GetCommandLineArgs();
             if (System.Array.Exists(args, arg => arg == "--host")) StartHost();
             else if (System.Array.Exists(args, arg => arg == "--client")) StartClient();
+            if (TryGetShutdownDelay(args, out float delay)) StartCoroutine(ShutdownAfter(delay));
         }
 
         private void OnDestroy()
@@ -49,6 +51,21 @@ namespace SantasLittleHelpers.Capture
             ConfigureTransport(false);
             bool started = manager.StartClient();
             Debug.Log($"CAPTURE_NET_START role=client port={Port} started={started}");
+        }
+
+        private IEnumerator ShutdownAfter(float delay)
+        {
+            yield return new WaitForSecondsRealtime(delay);
+            Debug.Log("CAPTURE_NET_SHUTDOWN requested=true");
+            manager.Shutdown();
+        }
+
+        private static bool TryGetShutdownDelay(string[] args, out float delay)
+        {
+            foreach (string arg in args)
+                if (arg.StartsWith("--shutdown-after=") && float.TryParse(arg.Substring(17), out delay)) return true;
+            delay = 0f;
+            return false;
         }
 
         private void ConfigureTransport(bool host)

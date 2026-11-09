@@ -8,61 +8,6 @@ using UnityEngine.InputSystem;
 
 namespace SantasLittleHelpers.Capture
 {
-    /// <summary>Replicated capture state and owner-side movement lock for a network player.</summary>
-    [DisallowMultipleComponent]
-    public sealed class CapturedPlayerState : NetworkBehaviour
-    {
-        private readonly NetworkVariable<bool> captured = new NetworkVariable<bool>(false);
-        private FirstPersonController controller;
-        public bool IsCaptured => captured.Value;
-        public event Action<bool> CaptureChanged;
-
-        public override void OnNetworkSpawn()
-        {
-            controller = GetComponent<FirstPersonController>();
-            captured.OnValueChanged += HandleChanged;
-            ApplyLock(captured.Value);
-        }
-
-        public override void OnNetworkDespawn()
-        {
-            captured.OnValueChanged -= HandleChanged;
-            ApplyLock(false);
-        }
-
-        private void HandleChanged(bool previous, bool current)
-        {
-            ApplyLock(current);
-            CaptureChanged?.Invoke(current);
-        }
-
-        private void ApplyLock(bool locked)
-        {
-            if (IsOwner && controller != null) controller.enabled = !locked;
-        }
-
-        internal void SetCapturedServer(bool value)
-        {
-            if (IsServer) captured.Value = value;
-        }
-
-        /// <summary>Called by a free local player when interacting with a nearby captured player.</summary>
-        public void RequestRelease(CapturedPlayerState target)
-        {
-            if (IsOwner && IsSpawned && target != null && target.IsSpawned)
-                RequestReleaseServerRpc(new NetworkObjectReference(target.NetworkObject));
-        }
-
-        [ServerRpc]
-        private void RequestReleaseServerRpc(NetworkObjectReference targetReference, ServerRpcParams rpcParams = default)
-        {
-            if (!targetReference.TryGet(out NetworkObject targetObject) || targetObject == NetworkObject) return;
-            CaptureRoundCoordinator coordinator = CaptureRoundCoordinator.Instance;
-            if (coordinator != null)
-                coordinator.TryReleaseServer(rpcParams.Receive.SenderClientId, targetObject.GetComponent<CapturedPlayerState>());
-        }
-    }
-
     /// <summary>Host-authoritative capture, release, loss state, disconnect cleanup and round reset.</summary>
     [DisallowMultipleComponent]
     public sealed class CaptureRoundCoordinator : NetworkBehaviour
@@ -88,7 +33,11 @@ namespace SantasLittleHelpers.Capture
             if (Instance == this) Instance = null;
         }
 
-        private void OnRoundLostChanged(bool oldValue, bool newValue) => RoundLostChanged?.Invoke(newValue);
+        private void OnRoundLostChanged(bool oldValue, bool newValue)
+        {
+            Debug.Log($"CAPTURE_ROUND_LOST value={newValue} peer={NetworkManager.LocalClientId}");
+            RoundLostChanged?.Invoke(newValue);
+        }
 
         /// <summary>Integration hook for #12: call on the host when a chasing resident reaches a player.</summary>
         public bool TryCaptureServer(ResidentBrain resident, CapturedPlayerState player)
@@ -97,6 +46,12 @@ namespace SantasLittleHelpers.Capture
             if (Vector3.Distance(resident.transform.position, player.transform.position) > captureRadius) return false;
             if (player.IsCaptured || roundLost.Value) return false;
             player.SetCapturedServer(true);
+            Debug.Log($"CAPTURE_HOST_CAPTURE player={player.OwnerClientId}");
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--capture-rescue-smoke"))
+            {
+                ResidentCaptureContact contact = FindAnyObjectByType<ResidentCaptureContact>();
+                if (contact != null) contact.enabled = false;
+            }
             RefreshLossState();
             return true;
         }
@@ -108,6 +63,12 @@ namespace SantasLittleHelpers.Capture
             CapturedPlayerState rescuer = sender.PlayerObject.GetComponent<CapturedPlayerState>();
             if (rescuer == null || rescuer.IsCaptured || Vector3.Distance(sender.PlayerObject.transform.position, target.transform.position) > releaseRadius) return false;
             target.SetCapturedServer(false);
+            Debug.Log($"CAPTURE_HOST_RELEASE rescuer={senderClientId} target={target.OwnerClientId}");
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--capture-rescue-smoke"))
+            {
+                ResidentCaptureContact contact = FindAnyObjectByType<ResidentCaptureContact>();
+                if (contact != null) contact.enabled = false;
+            }
             RefreshLossState();
             return true;
         }
@@ -116,9 +77,10 @@ namespace SantasLittleHelpers.Capture
         public void ResetRoundServer()
         {
             if (!IsServer) return;
-            foreach (CapturedPlayerState player in FindObjectsByType<CapturedPlayerState>(FindObjectsSortMode.None))
+            foreach (CapturedPlayerState player in FindObjectsByType<CapturedPlayerState>())
                 if (player.IsSpawned) player.SetCapturedServer(false);
             roundLost.Value = false;
+            Debug.Log("CAPTURE_HOST_RESET complete=true");
         }
 
         private void OnClientDisconnected(ulong clientId) => RefreshLossState();
