@@ -24,6 +24,7 @@ namespace SantasLittleHelpers.Delivery
         private Quaternion playerStartRotation;
         public DeliveryRoundState State => state;
         public bool IsDelivered => delivered;
+        public GiftCarryable RequiredGift => requiredGift;
         public event Action<DeliveryRoundState> StateChanged;
 
         private void Awake()
@@ -43,6 +44,7 @@ namespace SantasLittleHelpers.Delivery
 
         private void Update()
         {
+            if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsListening) return;
             CheckForReturn();
             if (state == DeliveryRoundState.Complete && Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
                 RestartRound();
@@ -60,6 +62,8 @@ namespace SantasLittleHelpers.Delivery
         {
             if (state != DeliveryRoundState.DeliverGift || delivered || gift != requiredGift) return false;
             delivered = true;
+            NetworkGiftCarryable networkGift = gift.GetComponent<NetworkGiftCarryable>();
+            if (networkGift != null) networkGift.ForceReleaseOnServer();
             state = DeliveryRoundState.ReturnToSleigh;
             status = "Correct gift delivered. Return to the sleigh.";
             StateChanged?.Invoke(state);
@@ -70,7 +74,16 @@ namespace SantasLittleHelpers.Delivery
         {
             foreach (KeyValuePair<GiftCarryable, GiftSnapshot> entry in snapshots)
                 if (entry.Key != null) entry.Value.Restore(entry.Key);
-            player.SetPositionAndRotation(playerStartPosition, playerStartRotation);
+            if (player.TryGetComponent(out Unity.Netcode.NetworkObject playerNetworkObject) && playerNetworkObject.IsSpawned)
+            {
+                if (playerNetworkObject.IsOwner)
+                {
+                    player.SetPositionAndRotation(playerStartPosition, playerStartRotation);
+                    if (player.TryGetComponent(out SantasLittleHelpers.Networking.OwnerNetworkTransform ownerTransform))
+                        ownerTransform.Teleport(playerStartPosition, playerStartRotation, player.lossyScale);
+                }
+            }
+            else player.SetPositionAndRotation(playerStartPosition, playerStartRotation);
             foreach (ResidentBrain resident in residents)
                 if (resident != null) resident.ResetForRound();
             delivered = false;
@@ -79,7 +92,11 @@ namespace SantasLittleHelpers.Delivery
             StateChanged?.Invoke(state);
         }
 
-        private void OnGUI() => GUI.Box(new Rect(16, 16, 390, 72), "Solo delivery\n" + status);
+        private void OnGUI()
+        {
+            if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsListening) return;
+            GUI.Box(new Rect(16, 16, 390, 72), "Solo delivery · WASD/mouse · E grab/drop · R restart\n" + status);
+        }
 
         private struct GiftSnapshot
         {

@@ -63,16 +63,22 @@ namespace SantasLittleHelpers
         {
             ulong sender = rpcParams.Receive.SenderClientId;
             if (!NetworkManager.ConnectedClients.TryGetValue(sender, out NetworkClient client) || client.PlayerObject == null)
+            {
+                TestLog($"GIFT_GRIP_REJECT reason=player-missing sender={sender}");
                 return;
+            }
 
             if (grab)
             {
-                if (gripSlots.Contains(sender)) return; // retries are idempotent
+                if (gripSlots.Contains(sender)) { TestLog($"GIFT_GRIP_DUPLICATE sender={sender} slots={gripSlots.Count}"); return; } // retries are idempotent
                 bool heavy = body.mass >= heavyMass;
-                if (gripSlots.Count >= (heavy ? 2 : 1) || !IsWithinReach(client.PlayerObject.transform)) return;
+                float distance = Vector3.Distance(client.PlayerObject.transform.position + Vector3.up * 1.55f, body.position);
+                if (gripSlots.Count >= (heavy ? 2 : 1)) { TestLog($"GIFT_GRIP_REJECT reason=full sender={sender} slots={gripSlots.Count} heavy={heavy}"); return; }
+                if (!IsWithinReach(client.PlayerObject.transform)) { TestLog($"GIFT_GRIP_REJECT reason=out-of-reach sender={sender} distance={distance:0.00} player={client.PlayerObject.transform.position} gift={body.position}"); return; }
                 if (gripSlots.Count == 0) carryable.SetNetworkHeld(true);
                 gripSlots.Add(sender);
                 gripOwners.Add(sender);
+                TestLog($"GIFT_GRIP_ACCEPT sender={sender} heavy={heavy} distance={distance:0.00} slots={gripSlots.Count}");
             }
             else
             {
@@ -133,6 +139,11 @@ namespace SantasLittleHelpers
             if (IsServer) gripOwners.Clear();
             if (carryable != null) carryable.SetNetworkHeld(false);
             if (IsServer) gripCount.Value = 0;
+        }
+
+        private static void TestLog(string message)
+        {
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-smoke")) Debug.Log(message);
         }
     }
 }
