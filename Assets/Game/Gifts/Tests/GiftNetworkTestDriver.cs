@@ -29,6 +29,10 @@ namespace SantasLittleHelpers.Gifts.Tests
 
         private IEnumerator RunOwnerSequence()
         {
+            while (NetworkManager.ConnectedClientsList.Count < 2) yield return null;
+            // Begin the sequence from a shared connection barrier so distinct owners
+            // submit the one-slot Light Gift request in the same test window.
+            yield return new WaitForSeconds(1f);
             transform.position = new Vector3(IsServer ? -0.8f : 0.8f, 0f, -1.1f);
             float deadline = Time.unscaledTime + 20f;
             while ((heavy == null || light == null) && Time.unscaledTime < deadline)
@@ -55,7 +59,7 @@ namespace SantasLittleHelpers.Gifts.Tests
             light.RequestGrip(true);
             yield return new WaitForSeconds(0.5f);
             bool ownsCompetingLightSlot = light.HasLocalGrip;
-            Debug.Log($"GIFT_TEST_COMPETING_GRIP client={OwnerClientId} hasSlot={ownsCompetingLightSlot} gripCount={light.GripCount}");
+            Debug.Log($"GIFT_TEST_SINGLE_SLOT_RESULT owner={OwnerClientId} hasSlot={ownsCompetingLightSlot} gripCount={light.GripCount}");
             yield return new WaitForSeconds(2f);
             LogRequest("release-single-light");
             light.RequestGrip(false);
