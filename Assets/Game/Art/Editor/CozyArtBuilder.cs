@@ -46,6 +46,6 @@ public static class CozyArtBuilder
         Place("elf",Root+"Prefabs/CozyElf_Visual.prefab",new Vector3(-3,0,0)); Place("gift",Root+"Prefabs/Gift_Cranberry_Visual.prefab",new Vector3(0,0,0)); Place("target",Root+"Prefabs/DeliveryTarget_Visual.prefab",new Vector3(3,0,0));
         Label("PLAYER",new Vector3(-3,2.9f,-.2f),pine); Label("GIFT",new Vector3(0,1.35f,-.2f),gift); Label("DELIVERY",new Vector3(3,2.7f,-.2f),teal);
         EditorSceneManager.SaveScene(s,Root+"Scenes/CozyArtTest.unity"); }
-    static void Place(string n,string p,Vector3 pos) { var g=Instance(p,pos); g.name=n; }
+    static void Place(string n,string p,Vector3 pos) { var g=Instance(p,pos); g.name=n; g.transform.position=pos; }
     static void Label(string t,Vector3 p,Material m) { var g=new GameObject(t+" label"); g.transform.position=p; g.transform.rotation=Quaternion.Euler(0,0,0); var tm=g.AddComponent<TextMesh>(); tm.text=t; tm.fontSize=64; tm.characterSize=.065f; tm.anchor=TextAnchor.MiddleCenter; tm.alignment=TextAlignment.Center; tm.color=m.color; }
 }
