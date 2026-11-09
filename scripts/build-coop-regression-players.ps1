@@ -39,12 +39,40 @@ foreach ($relativePath in $generatedPaths) {
 function Invoke-UnityBuild([string] $Method, [string] $LogName, [string] $ExpectedMarker) {
     $logPath = Join-Path $BuildLogRoot $LogName
     $arguments = @('-batchmode', '-nographics', '-projectPath', $projectPath, '-executeMethod', $Method, '-quit', '-logFile', $logPath)
-    $process = Start-Process -FilePath $unity -ArgumentList $arguments -PassThru -Wait -WindowStyle Hidden
+    $startInfo = [Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $unity
+    $startInfo.Arguments = (($arguments | ForEach-Object { Quote-UnityArgument $_ }) -join ' ')
+    $startInfo.WorkingDirectory = $projectPath
+    $startInfo.UseShellExecute = $true
+    $startInfo.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $process = [Diagnostics.Process]::Start($startInfo)
+    if ($null -eq $process) { throw "Could not start Unity at $unity" }
+    $process.WaitForExit()
     if ($process.ExitCode -ne 0) { throw "Unity build failed ($($process.ExitCode)); inspect $logPath" }
     $log = Get-Content -LiteralPath $logPath -Raw
     if ($log -notmatch [regex]::Escape($ExpectedMarker)) { throw "Expected build marker '$ExpectedMarker' missing; inspect $logPath" }
     if ($log -match 'errors=[1-9][0-9]*') { throw "Unity reported build errors; inspect $logPath" }
     Write-Output "BUILD_PASS method=$Method log=$logPath"
+}
+
+function Quote-UnityArgument([string] $Value) {
+    $builder = [Text.StringBuilder]::new()
+    [void]$builder.Append('"')
+    $backslashes = 0
+    foreach ($character in $Value.ToCharArray()) {
+        if ($character -eq '\') { $backslashes++; continue }
+        if ($character -eq '"') {
+            [void]$builder.Append(('\' * ($backslashes * 2 + 1)))
+            [void]$builder.Append('"')
+            $backslashes = 0
+            continue
+        }
+        if ($backslashes -gt 0) { [void]$builder.Append(('\' * $backslashes)); $backslashes = 0 }
+        [void]$builder.Append($character)
+    }
+    if ($backslashes -gt 0) { [void]$builder.Append(('\' * ($backslashes * 2))) }
+    [void]$builder.Append('"')
+    $builder.ToString()
 }
 
 try {
