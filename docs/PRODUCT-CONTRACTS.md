@@ -11,7 +11,7 @@ Dieses Dokument legt die Verträge fest, die UI, lokaler Speicher, Sitzung und M
 - Unity `6000.6.8f1`, NGO `2.13.3` (Pre-release), Unity Transport `6.6.0` (Editor-Builtin) bleiben fest. Paket- oder Editorwechsel sind außerhalb dieses Vertrags.
 - CLI-Smokes, maximal vier Spieler (Host plus höchstens drei Clients) und heutige Missionsregeln bleiben erhalten: ein leichtes Pflichtgeschenk liefern, Rückkehr zum Schlitten; Koop-Freigabe durch Host erst ab mindestens zwei verbundenen Spielern. Solo hat einen eigenen Startpfad und verlangt keine Sitzung.
 - Join nutzt direkte IPv4 plus UDP (Standardport `7777`); kein Relay, Matchmaking, NAT-Traversal oder IPv6 in v1. Ein Join ist nur in der Hütte vor Missionsbeginn möglich. Beim Missionsstart werden Join-Versuche verständlich mit `SessionClosed` abgelehnt; es gibt keinen späten Eintritt in die laufende Mission.
-- Der Host ist Sitzungs- und Fortschrittseigentümer. Ein Beitretender hat keinen lokalen Spielstand-Slot für diese Runde und schreibt keine Missionsdaten. Verlassen/Abbruch führt über die Hütte zurück zu Home; ein erneuter Start ist eine neue Runde mit neuer ID.
+- Der Host ist Sitzungs- und Fortschrittseigentümer. Ein Beitretender hat keinen lokalen Spielstand-Slot für diese Runde und schreibt keine Missionsdaten. Verlassen, Disconnect oder Host-Ende führt direkt zu Home; ein erneuter Start ist eine neue Runde mit neuer ID. Nur Fehler vor Missionsbeginn bleiben in der Hütte für Wiederholen oder Zurück.
 - v1 verwendet eine Home-Szene, eine Hütte/Lobby-Szene und eine Mission-Szene. Vor Aktivierung der Sitzung sind alle benötigten Welten lokal geladen. Szenennamen und UI-Layouts sind Implementierungsdetails; Zustandsübergänge und Verträge hier sind bindend.
 
 ## Zustandsmaschine und Aufrufreihenfolge
@@ -55,8 +55,8 @@ Task<SettingsResult<Unit>> SaveSettings(LocalSettings settings, CancellationToke
 // #39: SessionService owns NGO/UTP, NetworkManager, peers, lobby join-gate, scenes.
 SessionSnapshot Current { get; }
 event Action<SessionEvent> Changed;
-Task<SessionResult<SessionSnapshot>> StartSolo(SlotId slotId, CancellationToken ct);
-Task<SessionResult<SessionSnapshot>> StartHost(SlotId slotId, IPEndPoint endpoint, CancellationToken ct);
+Task<SessionResult<SessionSnapshot>> StartSolo(Guid slotId, CancellationToken ct);
+Task<SessionResult<SessionSnapshot>> StartHost(Guid slotId, IPEndPoint endpoint, CancellationToken ct);
 Task<SessionResult<SessionSnapshot>> Join(IPEndPoint endpoint, CancellationToken ct);
 Task<SessionResult<Unit>> RequestStartMission(CancellationToken ct);
 Task<SessionResult<Unit>> ReturnToHome(CancellationToken ct);
@@ -105,13 +105,13 @@ SESSION_JOIN_REJECT reason=SessionClosed|SessionFull|SessionNotFound|InvalidEndp
 SESSION_READY peerId=<id> scene=Mission roundId=<guid>
 MISSION_START_AUTHORIZED roundId=<guid> players=<n>
 MISSION_EVENT type=GiftDelivered|PlayerCaptured|PlayerFreed|Completed|Failed|Abandoned roundId=<guid> peerId=<id>
-SAVE_COMMIT role=Host roundId=<guid> slotId=<guid> missionId=<id> result=Committed|AlreadyCommitted|Rejected reason=<reason>
+SAVE_COMMIT role=Solo|Host roundId=<guid> slotId=<guid> missionId=<id> result=Committed|AlreadyCommitted|Rejected reason=<reason>
 SESSION_SHUTDOWN result=Completed|Failed managerCount=0|1 reason=<code>
 ```
 
 Die oben genannten neuen `--...` Optionen in diesen Beispielen sind **provisorische Vorschläge** für #50, keine bereits implementierten Kommandozeilen-Flags; bestehende Flags und Marker bleiben unverändert. `--profile=<isolated-id>` für getrennte temporäre Smoke-Daten ist ebenfalls nur ein Vorschlag. Jeder Startpfad protokolliert genau ein `SESSION_LAUNCH`: `Ready` nur nach bestätigter Bereitschaft, sonst `Failed` mit maschinenlesbarem Fehler. Bestehende `SOLO_SMOKE_*`, `COOP_*`, `GIFT_*` Marker werden nicht umbenannt und ihre Aktionen nicht dupliziert.
 
-Erfolgskriterium für v1-Smoke: Host plus bis zu drei Clients, `SESSION_READY` für alle beim Autorisierungszeitpunkt, bevor genau ein `MISSION_START_AUTHORIZED`; spätere Joiner werden abgelehnt. Bei Start-Cancel, Peer-Abbruch oder Scene-Load-Timeout wird nicht autorisiert, noch nicht bereite/abgebrochene Peers werden aus der aktuellen Bereitschaftsmenge entfernt, verbleibende aktuelle Peers gehen zurück zur Hütte und können erneut versuchen. Host-Commit genau einmal, Gast ohne Save-Aufruf, join nach Autorisierung `SESSION_JOIN_REJECT reason=SessionClosed`, expliziter Shutdown mit `managerCount=0`. Solo-Smoke erhält dieselben Missionsregeln, aber erzeugt keinen NetworkManager.
+Erfolgskriterium für v1-Smoke: Host plus bis zu drei Clients, `SESSION_READY` für alle beim Autorisierungszeitpunkt, bevor genau ein `MISSION_START_AUTHORIZED`; spätere Joiner werden abgelehnt. Wenn ein Peer vor Autorisierung abbricht, wird er aus der Bereitschaftsmenge entfernt; der Start kann mit den verbleibenden Peers fortfahren, solange mindestens Host plus ein Client verbunden sind. Fällt die Spielerzahl unter zwei oder wird Start abgebrochen/überschreitet das Scene-Load-Timeout, wird nicht autorisiert; die verbleibende Sitzung bleibt in der Hütte und der Host kann erneut versuchen. Host-Commit genau einmal, Gast ohne Save-Aufruf, join nach Autorisierung `SESSION_JOIN_REJECT reason=SessionClosed`, expliziter Shutdown mit `managerCount=0`. Solo-Smoke erhält dieselben Missionsregeln, aber erzeugt keinen NetworkManager.
 
 ## Unity-Szenen- und Netzwerkvertrag
 
