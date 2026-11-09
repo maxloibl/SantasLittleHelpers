@@ -53,7 +53,9 @@ namespace SantasLittleHelpers.Delivery
                     Debug.Log($"COOP_SMOKE_CAPTURED_GRIP_REQUEST owner={OwnerClientId}");
                 }
             }
-            if (!rescueRequested && self != null && !self.IsCaptured)
+            CoopNetworkRound round = FindFirstObjectByType<CoopNetworkRound>();
+            // Keep the captured client in that state until the server observes both regression checks.
+            if (IsServer && round != null && round.CaptureSmokeCanRescue && !rescueRequested && self != null && !self.IsCaptured)
             {
                 CapturedPlayerState captured = null;
                 foreach (CapturedPlayerState state in FindObjectsByType<CapturedPlayerState>())
@@ -70,7 +72,6 @@ namespace SantasLittleHelpers.Delivery
                     }
                 }
             }
-            CoopNetworkRound round = FindFirstObjectByType<CoopNetworkRound>();
             if (!movedToSleigh && round != null && round.CurrentPhase == 1)
             {
                 GameObject marker = GameObject.Find("SLED PARKING — Return Here");

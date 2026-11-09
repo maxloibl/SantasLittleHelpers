@@ -52,6 +52,7 @@ namespace SantasLittleHelpers.Delivery
         private Vector3 quietResidentLastPosition;
         private readonly HashSet<ulong> quietHouseVisited = new HashSet<ulong>();
         public int CurrentPhase => phase.Value;
+        internal bool CaptureSmokeCanRescue => smokeCaptureGripReleaseReported && smokeCapturedGrabRejectReported;
         public bool IsTerminal => phase.Value >= 2;
         public bool QuietPassengerReturnedAfterHouseVisit
         {
@@ -411,13 +412,16 @@ namespace SantasLittleHelpers.Delivery
         private void TrySmokeCapture()
         {
             smokeCaptureAttempted = true;
+            NetworkGiftCarryable heavy = FindSmokeGift(true);
             CapturedPlayerState player = null;
             foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
-                if (client.ClientId != NetworkManager.ServerClientId && client.PlayerObject != null)
-                { player = client.PlayerObject.GetComponent<CapturedPlayerState>(); break; }
-            if (player == null && NetworkManager.ConnectedClients.TryGetValue(NetworkManager.ServerClientId, out NetworkClient host) && host.PlayerObject != null)
-                player = host.PlayerObject.GetComponent<CapturedPlayerState>();
-            if (player == null) { Debug.Log("COOP_SMOKE_CAPTURE_FAIL player=missing"); return; }
+            {
+                if (client.ClientId == NetworkManager.ServerClientId || client.PlayerObject == null ||
+                    heavy == null || !heavy.HasServerGrip(client.ClientId)) continue;
+                player = client.PlayerObject.GetComponent<CapturedPlayerState>();
+                if (player != null) break;
+            }
+            if (player == null) { Debug.Log("COOP_SMOKE_CAPTURE_FAIL clientGrip=missing"); return; }
             foreach (ResidentBrain resident in residents)
             {
                 if (resident == null) continue;
