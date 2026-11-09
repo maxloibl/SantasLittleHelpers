@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Game/Scenes/DeliveryHouse.unity
+    guid: 05aa427be91793d418806bf7e535594d
+  - enabled: 1
     path: Assets/Game/Scenes/MovementSandbox.unity
     guid: a8e472fddaac4d239baf772b7527be32
   m_configObjects: {}

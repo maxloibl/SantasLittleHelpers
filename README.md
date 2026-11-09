@@ -4,7 +4,7 @@
 
 1. Öffne [Unity Hub](https://unity.com/download) und melde dich mit deinem Unity-Konto an. Aktiviere in Hub eine Lizenz, falls der Editor danach fragt.
 2. Installiere über **Installs → Install Editor** genau die Version aus [ProjectVersion.txt](ProjectSettings/ProjectVersion.txt). Der aktuelle Stand verwendet **Unity 6000.6.8f1**. Auf diesem Rechner liegt der Editor unter `C:\6000.6.8f1`. [Unity-Releasearchiv](https://unity.com/releases/editor/whats-new/6000.6.8f1)
-3. Wähle für spätere Windows-Builds bei Bedarf **Windows Build Support (IL2CPP)**. Für den ersten Test reicht der Editor. Git und Visual Studio wurden auf diesem Rechner bereits gefunden. In Visual Studio kann bei Bedarf über den Visual Studio Installer die Workload **Game development with Unity** ergänzt werden.
+3. Installiere in Unity Hub unter **Installs → Add modules** für diese Editorversion **Windows Build Support (Mono)**. Der eingecheckte Build-Einstieg erzeugt einen portablen Windows-x64-Mono-Player; IL2CPP und Visual Studio werden dafür nicht benötigt.
 4. Wähle in Hub **Projects → Add → Add project from disk** und dann den Ordner `SantasLittleHelpers`, der `Assets`, `Packages` und `ProjectSettings` enthält. Öffne das Projekt mit dem in Schritt 2 installierten Editor und lass den ersten Import fertiglaufen.
 5. Öffne im Project-Fenster `Assets/Game/Scenes/MovementSandbox.unity`. Drücke **Play** und klicke in die **Game**-Ansicht.
 
@@ -28,9 +28,38 @@
 - **Wand und Sprung.** Halte W an der grünen Wand. Die Spielfigur bleibt vor der Wand stehen. Gehe zum 60 cm hohen Holzblock links und springe darauf. Halten der Leertaste löst nach der Landung keinen zweiten Sprung aus. Erneutes Drücken in der Luft löst keinen Doppelsprung aus.
 - **Niedriger Durchgang.** Versuche rechts, im Stehen unter das Dach zu laufen. Ducke dich und gehe hinein. Lasse Strg bzw. C unter dem Dach los. Die Kapsel und Kamera bleiben unten. Gehe weiter aus dem Durchgang. Die Figur richtet sich wieder auf. Sprinten und Springen sind geduckt gesperrt.
 - **Kamera und Fokus.** Drehe dich bei gedrücktem W. Die Laufrichtung folgt sofort der horizontalen Blickrichtung. Bewege die Maus senkrecht, bis der Blick an beiden Enden stoppt. Bei Stillstand bleibt die Kamera ruhig. Drücke Esc, bewege die Maus und drücke W. Die Figur bewegt sich erst nach erneutem Klick in die Game-Ansicht. Prüfe auch einen Fensterwechsel per Alt+Tab.
-- **Windows-Ziel.** Öffne **File → Build Profiles**, wähle **Windows** und aktiviere das Profil, falls nötig. `MovementSandbox` ist in der globalen Szenenliste eingetragen. Wähle **Build and Run** und speichere den Build im Ordner `Builds/Windows`. Wiederhole den Durchgangstest im eigenständigen Fenster.
+- **Windows-Ziel.** Der Player startet in `DeliveryHouse`. Die globale Build-Szenenliste enthält zuerst `DeliveryHouse` und danach `MovementSandbox`; die Testszene bleibt im Editor direkt zum Spielen verfügbar. Für einen wiederholbaren Player-Build siehe Abschnitt 4.
 
-## 4. Aufbau im Editor
+## 4. Windows-Player bauen und starten
+
+Voraussetzungen: Git, Unity **6000.6.8f1** samt Modul **Windows Build Support (Mono)** und ein freier UDP-Port **7777**. PowerShell-Befehle im frischen Checkout:
+
+```powershell
+git clone https://github.com/maxloibl/SantasLittleHelpers.git
+Set-Location SantasLittleHelpers
+New-Item -ItemType Directory -Force C:/tmp/slh13-windows | Out-Null
+& 'C:/6000.6.8f1/Editor/Unity.exe' -batchmode -quit -projectPath (Get-Location).Path -buildTarget Win64 -executeMethod SantasLittleHelpers.Editor.WindowsPlayerBuild.Build -slhBuildPath C:/tmp/slh13-windows/DeliveryHouse.exe -logFile C:/tmp/slh13-windows/build.log
+```
+
+Der Befehl endet erfolgreich mit `WINDOWS_BUILD result=Succeeded`; das Log liegt bei `C:/tmp/slh13-windows/build.log`. Das portable Artefakt ist `DeliveryHouse.exe` samt `DeliveryHouse_Data/`, `UnityPlayer.dll` und ggf. weiteren erzeugten Dateien im selben Ordner. Zum Start:
+
+```powershell
+& 'C:/tmp/slh13-windows/DeliveryHouse.exe'
+```
+
+Im Menü **Play Solo** startet die Mission lokal. **Start Host** öffnet einen Host und wartet auf genau einen Mitspieler. Auf einem zweiten Rechner **Join as Client** wählen und die lokale IPv4-Adresse des Hosts eintragen; localhost (`127.0.0.1`) funktioniert nur für zwei Prozesse auf demselben Rechner. Beide verwenden UDP **7777**. Firewall und Netzwerk müssen eingehende UDP-Verbindungen auf diesem Port zulassen. Der Host bindet an alle Netzwerkschnittstellen; es gibt keine Relay-, NAT-Traversal- oder IPv6-Unterstützung. Port-Weiterleitung außerhalb eines LANs ist nicht Teil des geprüften Starts.
+
+Steuerung im Player: **W/A/S/D** laufen, **Maus** umsehen, **E** Geschenk aufnehmen/ablegen bzw. einen nahen Mitspieler befreien, **Shift** sprinten, **Strg/C** ducken, **Leertaste** springen. Bei Gefangennahme stoppt die Bewegung; zum Neustart nach einer abgeschlossenen Solo-Runde oder verlorenen Koop-Runde **R** drücken. **Esc** gibt den Mauszeiger frei; Klick ins Spielfenster fängt ihn wieder ein. Alt+Tab wechselt das Fenster.
+
+Für einen automatisierten Solo-Lauf des echten Players kann die Mission mit `--solo-smoke --shutdown-after=8` gestartet werden. Die Logzeilen `SOLO_SMOKE_DELIVERY` und `SOLO_SMOKE_PASS` belegen Geschenkaufnahme, Lieferung, Rückkehr, Abschluss und Neustart:
+
+```powershell
+& 'C:/tmp/slh13-windows/DeliveryHouse.exe' --solo-smoke --shutdown-after=8 -logFile C:/tmp/slh13-windows/solo-smoke.log
+```
+
+Bekannte Grenzen: Der Player wurde als Windows-x64-Mono-Build erstellt. Der Menü-Host unterstützt einen Client (zwei Spieler insgesamt); vier Spieler, WAN-Verbindungen und umfangreiche Netzfehler-/Disconnect-Abnahme sind nicht zugesichert. Die Solo-Runde ist spielbar; dieser Build-Schritt garantiert keine vollständige Gameplay-Abnahme.
+
+## 5. Aufbau im Editor
 
 `Assets/Game/Player/FirstPersonController.cs` enthält den Controller und seine lokalen Input Actions. Die Testszene liegt unter `Assets/Game/Scenes`, ihre Blockout-Materialien unter `Assets/Game/Materials`. Das URP-Profil liegt unter `Assets/Settings`.
 
@@ -40,7 +69,7 @@ Falls du die Szene in einem frisch angelegten Projekt verwenden willst, wähle i
 
 Der Spieler nutzt die Kapsel für direkte Steuerung und Kollisionen. Die späteren Geschenke bekommen ihre eigene Rigidbody-Physik.
 
-## 5. Git
+## 6. Git
 
 Das lokale Repository liegt direkt im Unity-Projektordner. Unity speichert Assets, ihre `.meta`-Dateien, Paketdefinitionen und Projekteinstellungen im Repository. Generierte Ordner wie `Library`, `Temp` und `Builds` sind ausgeschlossen. Prüfe im Editor unter **Project Settings → Editor → Asset Serialization** die Einstellung **Force Text** und unter **Version Control** die Einstellung **Visible Meta Files**.
 
