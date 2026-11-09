@@ -143,11 +143,11 @@ namespace SantasLittleHelpers.Capture
         {
             if (!IsSpawned || !RoundLost || Keyboard.current == null || !Keyboard.current.rKey.wasPressedThisFrame) return;
             if (IsServer) ResetRoundServer();
-            else RequestResetServerRpc();
+            else RequestResetRpc();
         }
 
-        [ServerRpc(RequireOwnership = false)]
-        private void RequestResetServerRpc(ServerRpcParams rpcParams = default)
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void RequestResetRpc(RpcParams rpcParams = default)
         {
             // Only the host can restart the shared round.
             if (rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId) ResetRoundServer();

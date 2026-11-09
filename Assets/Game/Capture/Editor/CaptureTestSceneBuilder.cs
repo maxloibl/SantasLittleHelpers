@@ -5,6 +5,7 @@ using Unity.Netcode.Transports.UTP;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using SantasLittleHelpers;
+using SantasLittleHelpers.AI;
 using SantasLittleHelpers.Capture;
 using SantasLittleHelpers.Networking;
 
@@ -41,7 +42,7 @@ namespace SantasLittleHelpers.Capture.Editor
             ResidentCaptureContact contact = residentObject.AddComponent<ResidentCaptureContact>();
             SerializedObject rso = new SerializedObject(contact); rso.FindProperty("resident").objectReferenceValue = resident; rso.ApplyModifiedPropertiesWithoutUndo();
             GameObject coordinator = new GameObject("Capture Round Coordinator"); coordinator.AddComponent<NetworkObject>(); coordinator.AddComponent<CaptureRoundCoordinator>();
-            net.AddComponent<LocalNetworkJoin>();
+            net.AddComponent<CaptureTestNetworkJoin>();
             EditorSceneManager.SaveScene(scene, ScenePath); AssetDatabase.SaveAssets();
         }
     }
