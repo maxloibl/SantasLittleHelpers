@@ -10,14 +10,24 @@ namespace SantasLittleHelpers.Delivery
     {
         private bool movedToHeavy;
         private bool requestedHeavyGrip;
+        private bool capturedGrabRequested;
         private bool movedToSleigh;
         private bool rescueRequested;
         private bool moving;
+        private bool quietGripRequested;
+        private int quietRouteStage;
+        private float quietStageAt;
+        private float lastMoveProgressAt;
+        private Vector3 lastMovePosition;
+        private bool quietStallReported;
         private Vector3 moveTarget;
         private string moveStage;
         private void Update()
         {
-            if (!IsOwner || !IsSpawned || !System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-smoke")) return;
+            if (!IsOwner || !IsSpawned) return;
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-quiet-smoke"))
+            { TickQuietCarry(); return; }
+            if (!System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-smoke")) return;
             TickMove();
             if (!movedToHeavy && Time.unscaledTime > 3f)
             {
@@ -30,7 +40,16 @@ namespace SantasLittleHelpers.Delivery
                 if (heavy != null && heavy.IsSpawned) { heavy.RequestGrip(true); Debug.Log($"COOP_SMOKE_GRIP_REQUEST owner={OwnerClientId} gift=heavy"); requestedHeavyGrip = true; }
             }
             CapturedPlayerState self = GetComponent<CapturedPlayerState>();
-            if (!rescueRequested && self != null && !self.IsCaptured && OwnerClientId != NetworkManager.ServerClientId)
+            if (self != null && self.IsCaptured)
+            {
+                if (!capturedGrabRequested && FindHeavy() is NetworkGiftCarryable capturedHeavy)
+                {
+                    capturedHeavy.RequestGrip(true);
+                    capturedGrabRequested = true;
+                    Debug.Log($"COOP_SMOKE_CAPTURED_GRIP_REQUEST owner={OwnerClientId}");
+                }
+            }
+            if (!rescueRequested && self != null && !self.IsCaptured)
             {
                 CapturedPlayerState captured = null;
                 foreach (CapturedPlayerState state in FindObjectsByType<CapturedPlayerState>())
@@ -58,11 +77,53 @@ namespace SantasLittleHelpers.Delivery
             }
         }
 
+        private void TickQuietCarry()
+        {
+            if (OwnerClientId != NetworkManager.ServerClientId) return;
+            TickMove();
+            NetworkGiftCarryable light = FindLight();
+            if (quietRouteStage == 0 && !moving && !quietGripRequested)
+            {
+                BeginMove(new Vector3(-1.1f, .05f, -4.8f), "quiet-pickup");
+                quietRouteStage = 1;
+            }
+            if (quietRouteStage == 1 && !moving && !quietGripRequested && light != null)
+            {
+                light.RequestGrip(true);
+                quietGripRequested = true;
+                quietStageAt = Time.unscaledTime;
+                Debug.Log("COOP_QUIET_GRIP_REQUEST owner=0 gift=light");
+            }
+            if (quietRouteStage == 1 && quietGripRequested && light != null && light.HasLocalGrip && !moving)
+            {
+                Debug.Log("COOP_QUIET_GRIP_CONFIRMED owner=0 gift=light");
+                BeginMove(new Vector3(0f, .05f, 2f), "quiet-door"); quietRouteStage = 2;
+            }
+            if (quietRouteStage == 2 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 4f), "quiet-house-entry"); quietRouteStage = 3; }
+            if (quietRouteStage == 3 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 4f), "quiet-barrier-passage"); quietRouteStage = 4; }
+            if (quietRouteStage == 4 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 10f), "quiet-delivery-approach"); quietRouteStage = 5; }
+            if (quietRouteStage == 5 && !moving) { BeginMove(new Vector3(-4f, transform.position.y, 10f), "quiet-delivery"); quietRouteStage = 6; }
+            CoopNetworkRound round = FindFirstObjectByType<CoopNetworkRound>();
+            if (quietRouteStage == 6 && !moving && round != null && round.CurrentPhase == 1)
+            {
+                BeginMove(new Vector3(-6.3f, transform.position.y, 10f), "quiet-return-passage"); quietRouteStage = 7;
+            }
+            if (quietRouteStage == 7 && !moving) { BeginMove(new Vector3(-6.3f, transform.position.y, 4f), "quiet-return-barrier"); quietRouteStage = 8; }
+            if (quietRouteStage == 8 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 4f), "quiet-return-house"); quietRouteStage = 9; }
+            if (quietRouteStage == 9 && !moving) { BeginMove(new Vector3(0f, transform.position.y, 2f), "quiet-return-door"); quietRouteStage = 10; }
+            if (quietRouteStage == 10 && !moving) { BeginMove(new Vector3(-.8f, transform.position.y, -6.25f), "quiet-return-home"); quietRouteStage = 11; }
+            if (quietRouteStage == 1 && Time.unscaledTime - quietStageAt > 8f)
+                Debug.Log("COOP_QUIET_GRIP_TIMEOUT light=" + (light != null));
+        }
+
         private void BeginMove(Vector3 position, string stage)
         {
             moveTarget = position;
             moveStage = stage;
             moving = true;
+            lastMovePosition = transform.position;
+            lastMoveProgressAt = Time.unscaledTime;
+            quietStallReported = false;
             Debug.Log($"COOP_SMOKE_MOVE_BEGIN owner={OwnerClientId} stage={stage} target={position}");
         }
 
@@ -78,15 +139,38 @@ namespace SantasLittleHelpers.Delivery
                 return;
             }
             CharacterController character = GetComponent<CharacterController>();
-            Vector3 step = delta.normalized * Mathf.Min(delta.magnitude, 8f * Time.deltaTime);
+            float speed = moveStage.StartsWith("quiet-") ? 4f : 8f;
+            Vector3 step = delta.normalized * Mathf.Min(delta.magnitude, speed * Time.deltaTime);
+            if (step.sqrMagnitude > .0001f) transform.rotation = Quaternion.LookRotation(new Vector3(step.x, 0f, step.z));
             if (character != null && character.enabled) character.Move(step);
             else transform.position += step;
+            if ((transform.position - lastMovePosition).sqrMagnitude > .000004f)
+            {
+                lastMovePosition = transform.position;
+                lastMoveProgressAt = Time.unscaledTime;
+            }
+            else if (!quietStallReported && moveStage.StartsWith("quiet-") && Time.unscaledTime - lastMoveProgressAt > 2f)
+            {
+                NetworkGiftCarryable carried = FindLight();
+                Collider[] nearby = Physics.OverlapSphere(transform.position + Vector3.up * .9f, .65f);
+                string blockers = string.Empty;
+                foreach (Collider hit in nearby) blockers += (blockers.Length == 0 ? string.Empty : ",") + hit.name;
+                Debug.Log($"COOP_QUIET_STALLED owner={OwnerClientId} stage={moveStage} position={transform.position} target={moveTarget} gift={(carried != null ? carried.transform.position.ToString() : "missing")} blockers={blockers}");
+                quietStallReported = true;
+            }
         }
 
         private static NetworkGiftCarryable FindHeavy()
         {
             foreach (NetworkGiftCarryable gift in FindObjectsByType<NetworkGiftCarryable>())
                 if (gift != null && gift.TryGetComponent(out Rigidbody body) && body.mass >= 3f) return gift;
+            return null;
+        }
+
+        private static NetworkGiftCarryable FindLight()
+        {
+            foreach (NetworkGiftCarryable gift in FindObjectsByType<NetworkGiftCarryable>())
+                if (gift != null && gift.TryGetComponent(out Rigidbody body) && body.mass < 3f) return gift;
             return null;
         }
     }

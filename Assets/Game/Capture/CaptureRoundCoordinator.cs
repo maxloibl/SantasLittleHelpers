@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using SantasLittleHelpers;
 using SantasLittleHelpers.AI;
+using SantasLittleHelpers.Delivery;
 using SantasLittleHelpers.Networking;
 using Unity.Netcode;
 using UnityEngine;
@@ -46,6 +47,8 @@ namespace SantasLittleHelpers.Capture
         public bool TryCaptureServer(ResidentBrain resident, CapturedPlayerState player)
         {
             if (!IsServer || resident == null || player == null || !player.IsSpawned || resident.State != ResidentState.Chasing) return false;
+            CoopNetworkRound mission = FindFirstObjectByType<CoopNetworkRound>();
+            if (mission != null && mission.IsTerminal) return false;
             if (Vector3.Distance(resident.transform.position, player.transform.position) > captureRadius) return false;
             if (player.IsCaptured || roundLost.Value) return false;
             if (releaseProtectionEndsAt.TryGetValue(player.OwnerClientId, out float protectedUntil))
@@ -53,6 +56,8 @@ namespace SantasLittleHelpers.Capture
                 if (Time.unscaledTime < protectedUntil) return false;
                 releaseProtectionEndsAt.Remove(player.OwnerClientId);
             }
+            foreach (NetworkGiftCarryable gift in FindObjectsByType<NetworkGiftCarryable>())
+                if (gift != null) gift.ForceReleaseClientOnServer(player.OwnerClientId);
             player.SetCapturedServer(true);
             Debug.Log($"CAPTURE_HOST_CAPTURE player={player.OwnerClientId}");
             RefreshLossState();

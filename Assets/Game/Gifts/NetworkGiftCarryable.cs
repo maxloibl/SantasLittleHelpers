@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SantasLittleHelpers.Capture;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -14,6 +15,7 @@ namespace SantasLittleHelpers
         [SerializeField, Min(0.1f)] private float soloHeavySpeed = 0.35f;
         [SerializeField, Min(0.1f)] private float twoPlayerHeavySpeed = 1f;
         private readonly HashSet<ulong> gripSlots = new HashSet<ulong>();
+        private readonly HashSet<ulong> capturedGrabRejections = new HashSet<ulong>();
         private readonly NetworkList<ulong> gripOwners = new NetworkList<ulong>(
             null,
             NetworkVariableReadPermission.Everyone,
@@ -33,6 +35,15 @@ namespace SantasLittleHelpers
             return true;
         }
 
+        /// <summary>Removes only this client's grip and preserves any partner's heavy-gift slot.</summary>
+        public bool ForceReleaseClientOnServer(ulong clientId)
+        {
+            return IsServer && IsSpawned && ReleaseClient(clientId);
+        }
+
+        public bool HasServerGrip(ulong clientId) => IsServer && gripSlots.Contains(clientId);
+        public bool WasCapturedGrabRejected(ulong clientId) => IsServer && capturedGrabRejections.Contains(clientId);
+
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
@@ -48,6 +59,7 @@ namespace SantasLittleHelpers
                 gripSlots.Clear();
                 gripOwners.Clear();
                 gripCount.Value = 0;
+                capturedGrabRejections.Clear();
                 NetworkManager.OnClientDisconnectCallback += OnClientDisconnect;
             }
         }
@@ -70,6 +82,13 @@ namespace SantasLittleHelpers
 
             if (grab)
             {
+                CapturedPlayerState playerState = client.PlayerObject.GetComponent<CapturedPlayerState>();
+                if (playerState != null && playerState.IsCaptured)
+                {
+                    capturedGrabRejections.Add(sender);
+                    TestLog($"GIFT_GRIP_REJECT reason=captured-grab sender={sender}");
+                    return;
+                }
                 if (gripSlots.Contains(sender)) { TestLog($"GIFT_GRIP_DUPLICATE sender={sender} slots={gripSlots.Count}"); return; } // retries are idempotent
                 bool heavy = body.mass >= heavyMass;
                 float distance = Vector3.Distance(client.PlayerObject.transform.position + Vector3.up * 1.55f, body.position);
@@ -125,12 +144,13 @@ namespace SantasLittleHelpers
             body.useGravity = true;
         }
 
-        private void ReleaseClient(ulong clientId)
+        private bool ReleaseClient(ulong clientId)
         {
-            if (!gripSlots.Remove(clientId)) return;
+            if (!gripSlots.Remove(clientId)) return false;
             if (gripOwners.Contains(clientId)) gripOwners.Remove(clientId);
             gripCount.Value = gripSlots.Count;
             if (gripSlots.Count == 0) carryable.SetNetworkHeld(false);
+            return true;
         }
 
         private void ClearGrips()
@@ -143,7 +163,8 @@ namespace SantasLittleHelpers
 
         private static void TestLog(string message)
         {
-            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-smoke")) Debug.Log(message);
+            if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-smoke") ||
+                System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-quiet-smoke")) Debug.Log(message);
         }
     }
 }

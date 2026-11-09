@@ -44,6 +44,26 @@ namespace SantasLittleHelpers.AI
         public float Alarm => alarm;
         public Transform Target { get => target; set => target = value; }
 
+        /// <summary>Copies the authored solo resident's tuning and route onto its host-owned coop replica.</summary>
+        public void CopyRoundConfigurationFrom(ResidentBrain source)
+        {
+            if (source == null || source == this) return;
+            patrolPoints = source.patrolPoints;
+            lineOfSightBlockers = source.lineOfSightBlockers;
+            movementBlockers = source.movementBlockers;
+            sightRange = source.sightRange;
+            fieldOfView = source.fieldOfView;
+            chaseSightHold = source.chaseSightHold;
+            hearingRange = source.hearingRange;
+            patrolSpeed = source.patrolSpeed;
+            investigateSpeed = source.investigateSpeed;
+            chaseSpeed = source.chaseSpeed;
+            alarmDecayPerSecond = source.alarmDecayPerSecond;
+            waypointTolerance = source.waypointTolerance;
+            target = null;
+            patrolIndex = 0;
+        }
+
         private void Awake()
         {
             startPosition = transform.position;

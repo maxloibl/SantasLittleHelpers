@@ -93,6 +93,8 @@ namespace SantasLittleHelpers.Editor
                 options = BuildOptions.Development | BuildOptions.AllowDebugging
             });
             Debug.Log($"COOP_BUILD result={report.summary.result} errors={report.summary.totalErrors} warnings={report.summary.totalWarnings} path=C:/tmp/slh12-build/DeliveryHouse.exe");
+            if (report.summary.result != BuildResult.Succeeded || report.summary.totalErrors > 0)
+                throw new System.InvalidOperationException($"DeliveryHouse Windows build failed: {report.summary.result}, errors={report.summary.totalErrors}");
         }
 
         private static void BuildPlayer()

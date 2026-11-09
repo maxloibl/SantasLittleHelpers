@@ -157,14 +157,16 @@ namespace SantasLittleHelpers.Delivery
 
         private void OnServerStarted()
         {
-            var networkResidents = new ResidentBrain[residents.Length];
-            for (int i = 0; i < residents.Length; i++)
+            bool quietSmoke = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--coop-quiet-smoke");
+            var networkResidents = new ResidentBrain[quietSmoke ? 0 : residents.Length];
+            for (int i = 0; i < networkResidents.Length; i++)
             {
                 Vector3 position = residents[i] != null ? residents[i].transform.position : Vector3.zero;
                 GameObject replica = Instantiate(residentPrefab, position, Quaternion.identity);
                 NetworkObject residentObject = replica.GetComponent<NetworkObject>();
                 residentObject.Spawn();
                 ResidentBrain brain = replica.GetComponent<ResidentBrain>();
+                if (residents[i] != null) brain.CopyRoundConfigurationFrom(residents[i]);
                 brain.Target = null;
                 replica.AddComponent<HostResidentTarget>();
                 networkResidents[i] = brain;
@@ -197,6 +199,8 @@ namespace SantasLittleHelpers.Delivery
         {
             NetworkManager manager = NetworkManager.Singleton;
             if (manager == null || !manager.IsServer || resident == null) return;
+            CoopNetworkRound mission = FindFirstObjectByType<CoopNetworkRound>();
+            if (mission != null && mission.IsTerminal) { resident.Target = null; return; }
             CapturedPlayerState nearest = null;
             float distance = float.MaxValue;
             foreach (NetworkClient client in manager.ConnectedClientsList)
