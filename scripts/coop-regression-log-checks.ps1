@@ -1,5 +1,5 @@
 function Test-GiftRegressionLog {
-    param([Parameter(Mandatory = $true)][string] $LogText)
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string] $LogText)
 
     $issues = [Collections.Generic.List[string]]::new()
     if ($LogText -match 'GIFT_TEST_REGRAB_FAIL') { $issues.Add('explicit regrab failure marker present') }
@@ -39,13 +39,14 @@ function Test-GiftRegressionLog {
 }
 
 function Test-FourPlayerLog {
-    param([Parameter(Mandatory = $true)][string] $HostLog)
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string] $HostLog)
 
     $issues = [Collections.Generic.List[string]]::new()
+    $lines = $HostLog -split "`r?`n"
     $activeOwners = @{}
     $activeSlots = @{}
     $fourPlayerSnapshot = $null
-    foreach ($line in ($HostLog -split "`r?`n")) {
+    foreach ($line in $lines) {
         if ($line -match 'COOP_PLAYER_SLOT_RELEASED owner=(\d+) slot=(\d+)') {
             $owner = $Matches[1]; $slot = $Matches[2]
             if ($activeOwners.ContainsKey($owner) -and $activeOwners[$owner] -eq $slot) { $activeOwners.Remove($owner) }
@@ -74,8 +75,24 @@ function Test-FourPlayerLog {
             $issues.Add('the four active owners do not occupy the four distinct slots 0-3')
         }
 
+        $resetSmokeLines = [Collections.Generic.List[int]]::new()
+        $resetCompleteLines = [Collections.Generic.List[int]]::new()
+        $resetCompleteMarkers = [regex]::Matches($HostLog, 'COOP_HOST_RESET complete=(?i:True|False)')
+        for ($lineIndex = 0; $lineIndex -lt $lines.Count; $lineIndex++) {
+            if ($lines[$lineIndex] -match 'COOP_FOUR_PLAYER_RESET_SMOKE started=True players=4') { $resetSmokeLines.Add($lineIndex) }
+            if ($lines[$lineIndex] -match 'COOP_HOST_RESET complete=(True|False)') {
+                $resetCompleteLines.Add($lineIndex)
+                if ($Matches[1] -ne 'true') { $issues.Add('host reset completion marker is not true') }
+            }
+        }
+        if ($resetSmokeLines.Count -ne 1) { $issues.Add('four-player reset smoke marker is missing or ambiguous') }
+        if ($resetCompleteMarkers.Count -ne 1 -or $resetCompleteLines.Count -ne 1) { $issues.Add('host reset completion marker is missing or ambiguous') }
+        $resetSmokeLine = if ($resetSmokeLines.Count -eq 1) { $resetSmokeLines[0] } else { -1 }
+        $resetCompleteLine = if ($resetCompleteLines.Count -eq 1) { $resetCompleteLines[0] } else { -1 }
+        if ($resetSmokeLine -lt 0 -or $resetCompleteLine -le $resetSmokeLine) { $issues.Add('host reset did not complete after the four-player reset smoke began') }
+
         $startsByOwner = @{}
-        foreach ($line in ($HostLog -split "`r?`n")) {
+        foreach ($line in $lines) {
             if ($line -match 'COOP_PLAYER_START owner=(\d+) slot=(\d+) position=\(([^)\r\n]+)\)') {
                 $owner = $Matches[1]
                 if ($fourPlayerSnapshot.ContainsKey($owner) -and -not $startsByOwner.ContainsKey($owner)) {
@@ -85,60 +102,58 @@ function Test-FourPlayerLog {
         }
 
         $replicasByOwner = @{}
-        foreach ($line in ($HostLog -split "`r?`n")) {
-            if ($line -match 'COOP_PLAYER_REPLICA_POSITION owner=(\d+) slot=(\d+) position=\(([^)\r\n]+)\)') {
-                $owner = $Matches[1]
-                if ($fourPlayerSnapshot.ContainsKey($owner) -and -not $replicasByOwner.ContainsKey($owner)) {
-                    $replicasByOwner[$owner] = [pscustomobject]@{ Slot = $Matches[2]; Position = ($Matches[3] -replace '\s', '') }
+        if ($resetSmokeLine -ge 0) {
+            for ($lineIndex = 0; $lineIndex -lt $resetSmokeLine; $lineIndex++) {
+                $line = $lines[$lineIndex]
+                if ($line -match 'COOP_PLAYER_REPLICA_POSITION owner=(\d+) slot=(\d+) position=\(([^)\r\n]+)\)') {
+                    $owner = $Matches[1]
+                    if ($fourPlayerSnapshot.ContainsKey($owner) -and -not $replicasByOwner.ContainsKey($owner)) {
+                        $replicasByOwner[$owner] = [pscustomobject]@{ Slot = $Matches[2]; Position = ($Matches[3] -replace '\s', '') }
+                    }
                 }
             }
         }
 
-        if ($replicasByOwner.Count -ne 4) { $issues.Add('host replica pose marker is missing for one or more active owners') }
+        if ($replicasByOwner.Count -ne 4) { $issues.Add('four distinct host replica pose markers are required before reset begins') }
         foreach ($owner in $fourPlayerSnapshot.Keys) {
             if (-not $startsByOwner.ContainsKey($owner) -or -not $replicasByOwner.ContainsKey($owner)) { continue }
             if ($startsByOwner[$owner].Slot -ne $fourPlayerSnapshot[$owner] -or $replicasByOwner[$owner].Slot -ne $fourPlayerSnapshot[$owner]) {
                 $issues.Add("owner $owner start and host replica slots do not match the active assignment")
             }
             if ($startsByOwner[$owner].Position -ne $replicasByOwner[$owner].Position) {
-                $issues.Add("owner $owner assigned start and actual host replica positions do not match")
+                $issues.Add("owner $owner assigned start and actual pre-reset host replica positions do not match")
             }
         }
         if (@($startsByOwner.Values.Position | Sort-Object -Unique).Count -ne 4) { $issues.Add('authoritative start positions are not distinct') }
-        if (@($replicasByOwner.Values.Position | Sort-Object -Unique).Count -ne 4) { $issues.Add('actual host replica positions are not distinct') }
+        if (@($replicasByOwner.Values.Position | Sort-Object -Unique).Count -ne 4) { $issues.Add('actual pre-reset host replica positions are not distinct') }
 
-        $lines = $HostLog -split "`r?`n"
-        $resetLine = -1
-        for ($lineIndex = 0; $lineIndex -lt $lines.Count; $lineIndex++) {
-            if ($lines[$lineIndex] -match 'COOP_FOUR_PLAYER_RESET_SMOKE started=True players=4') { $resetLine = $lineIndex; break }
-        }
-        if ($resetLine -lt 0) { $issues.Add('four-player reset smoke marker missing') }
-        else {
-            $postResetReplicas = @{}
-            for ($lineIndex = $resetLine + 1; $lineIndex -lt $lines.Count; $lineIndex++) {
-                if ($lines[$lineIndex] -match 'COOP_PLAYER_REPLICA_POSITION owner=(\d+) slot=(\d+) position=\(([^)\r\n]+)\)') {
-                    $owner = $Matches[1]
-                    if ($fourPlayerSnapshot.ContainsKey($owner)) {
+        $postResetReplicas = @{}
+        if ($resetCompleteLine -ge 0 -and $resetCompleteLine -gt $resetSmokeLine) {
+            for ($lineIndex = $resetCompleteLine + 1; $lineIndex -lt $lines.Count; $lineIndex++) {
+                $line = $lines[$lineIndex]
+                if ($line -match 'COOP_PLAYER_REPLICA_POSITION owner=(\d+) slot=(\d+) position=\(([^)\r\n]+)\)') {
+                $owner = $Matches[1]
+                    if ($fourPlayerSnapshot.ContainsKey($owner) -and -not $postResetReplicas.ContainsKey($owner)) {
                         $postResetReplicas[$owner] = [pscustomobject]@{ Slot = $Matches[2]; Position = ($Matches[3] -replace '\s', '') }
                     }
                 }
             }
-            if ($postResetReplicas.Count -ne 4 -or @($postResetReplicas.Values.Position | Sort-Object -Unique).Count -ne 4) {
-                $issues.Add('four-player reset did not produce four distinct actual host replica positions')
+        }
+        if ($postResetReplicas.Count -ne 4 -or @($postResetReplicas.Values.Position | Sort-Object -Unique).Count -ne 4) {
+            $issues.Add('four distinct actual host replica positions are required after reset completion')
+        }
+        foreach ($owner in $fourPlayerSnapshot.Keys) {
+            if ($postResetReplicas.ContainsKey($owner) -and $postResetReplicas[$owner].Slot -ne $fourPlayerSnapshot[$owner]) {
+                $issues.Add("owner $owner changed slot after the four-player reset")
             }
-            foreach ($owner in $fourPlayerSnapshot.Keys) {
-                if ($postResetReplicas.ContainsKey($owner) -and $postResetReplicas[$owner].Slot -ne $fourPlayerSnapshot[$owner]) {
-                    $issues.Add("owner $owner changed slot after the four-player reset")
-                }
-                if ($postResetReplicas.ContainsKey($owner) -and $startsByOwner.ContainsKey($owner) -and
-                    $postResetReplicas[$owner].Position -ne $startsByOwner[$owner].Position) {
-                    $issues.Add("owner $owner was not reset to its assigned start position")
-                }
+            if ($postResetReplicas.ContainsKey($owner) -and $startsByOwner.ContainsKey($owner) -and
+                $postResetReplicas[$owner].Position -ne $startsByOwner[$owner].Position) {
+                $issues.Add("owner $owner was not reset to its assigned start position")
             }
         }
 
         $missionOwners = @{}
-        foreach ($line in ($HostLog -split "`r?`n")) {
+        foreach ($line in $lines) {
             if ($line -match 'MISSION_PLAYER owner=(\d+) localView=(True|False)') { $missionOwners[$Matches[1]] = $Matches[2] }
         }
         $localOwners = @($missionOwners.Keys | Where-Object { $missionOwners[$_] -eq 'True' })

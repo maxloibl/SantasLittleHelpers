@@ -17,8 +17,9 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'coop-regression-log-checks.ps1')
 $resolvedBuild = (Resolve-Path -LiteralPath $BuildPath).Path
 if ([IO.Path]::GetExtension($resolvedBuild) -ne '.exe') { throw "Expected a Windows player .exe: $resolvedBuild" }
+$resolvedLogRoot = [IO.Path]::GetFullPath($LogRoot)
 $runId = '{0}-{1:yyyyMMdd-HHmmss-fff}-{2}' -f $Scenario, [DateTime]::UtcNow, [guid]::NewGuid().ToString('N')
-$runDirectory = Join-Path $LogRoot $runId
+$runDirectory = Join-Path $resolvedLogRoot $runId
 New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
 
 $clientCount = switch ($Scenario) {
@@ -141,6 +142,7 @@ $missing = @($requirements | Where-Object { $allLogs -notmatch [regex]::Escape($
 if ($missing.Count -gt 0) { $runFailures.Add("Required marker missing: $($missing -join '; ')") }
 
 if ($Scenario -eq 'gift-regression') {
+    if ([string]::IsNullOrWhiteSpace($allLogs)) { $runFailures.Add('no gift log content was available') }
     $giftResult = Test-GiftRegressionLog -LogText $allLogs
     foreach ($issue in $giftResult.Issues) { $runFailures.Add($issue) }
 }

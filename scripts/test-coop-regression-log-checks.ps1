@@ -22,6 +22,7 @@ Assert-Check 'false cleanup does not pass by substring' (-not (Test-GiftRegressi
 Assert-Check 'false regrab does not pass by substring' (-not (Test-GiftRegressionLog $giftFalseRegrab).Passed)
 Assert-Check 'later false cleanup does not hide behind a positive marker' (-not (Test-GiftRegressionLog $giftLaterFalseCleanup).Passed)
 Assert-Check 'later false regrab does not hide behind a positive marker' (-not (Test-GiftRegressionLog $giftLaterFalseRegrab).Passed)
+Assert-Check 'empty gift log returns issues instead of a binding exception' (-not (Test-GiftRegressionLog '').Passed)
 
 $fourPlayerPassing = @'
 MISSION_PLAYER owner=7 localView=True position=(0.00, 0.00, 0.00)
@@ -37,6 +38,7 @@ COOP_PLAYER_REPLICA_POSITION owner=4 slot=1 position=(0.80, 0.05, -6.25)
 COOP_PLAYER_REPLICA_POSITION owner=8 slot=2 position=(-1.50, 0.05, -6.60)
 COOP_PLAYER_REPLICA_POSITION owner=9 slot=3 position=(1.50, 0.05, -6.60)
 COOP_FOUR_PLAYER_RESET_SMOKE started=true players=4
+COOP_HOST_RESET complete=true
 COOP_PLAYER_REPLICA_POSITION owner=7 slot=0 position=(-0.80, 0.05, -6.25)
 COOP_PLAYER_REPLICA_POSITION owner=4 slot=1 position=(0.80, 0.05, -6.25)
 COOP_PLAYER_REPLICA_POSITION owner=8 slot=2 position=(-1.50, 0.05, -6.60)
@@ -44,10 +46,23 @@ COOP_PLAYER_REPLICA_POSITION owner=9 slot=3 position=(1.50, 0.05, -6.60)
 '@
 $fourPlayerSameSlot = $fourPlayerPassing.Replace('COOP_PLAYER_START owner=4 slot=1', 'COOP_PLAYER_START owner=4 slot=0').Replace('COOP_PLAYER_REPLICA_POSITION owner=4 slot=1', 'COOP_PLAYER_REPLICA_POSITION owner=4 slot=0')
 $fourPlayerSamePose = $fourPlayerPassing.Replace('COOP_PLAYER_REPLICA_POSITION owner=9 slot=3 position=(1.50, 0.05, -6.60)', 'COOP_PLAYER_REPLICA_POSITION owner=9 slot=3 position=(-0.80, 0.05, -6.25)')
+$fourPlayerMissingResetComplete = $fourPlayerPassing.Replace('COOP_HOST_RESET complete=true', '')
+$fourPlayerDuplicateResetComplete = $fourPlayerPassing.Replace('COOP_HOST_RESET complete=true', "COOP_HOST_RESET complete=true`nCOOP_HOST_RESET complete=true")
+$onlyPostResetReplicas = [Collections.Generic.List[string]]::new()
+$afterResetSmoke = $false
+foreach ($line in ($fourPlayerPassing -split "`r?`n")) {
+    if ($line -match 'COOP_FOUR_PLAYER_RESET_SMOKE started=true players=4') { $afterResetSmoke = $true }
+    if (-not $afterResetSmoke -and $line -match 'COOP_PLAYER_REPLICA_POSITION') { continue }
+    $onlyPostResetReplicas.Add($line)
+}
+$fourPlayerPostOnlyPoses = $onlyPostResetReplicas -join "`n"
 $fourPlayerLegacyMarkers = $fourPlayerPassing -replace 'COOP_PLAYER_START owner=\d+ slot=\d+ ', 'COOP_PLAYER_START owner=0 ' -replace 'COOP_PLAYER_REPLICA_POSITION owner=\d+ slot=\d+ ', 'MISSION_PLAYER owner=0 '
 Assert-Check 'four-player flexible owners, slots and host replicas pass' (Test-FourPlayerLog $fourPlayerPassing).Passed
 Assert-Check 'duplicate active slot fails' (-not (Test-FourPlayerLog $fourPlayerSameSlot).Passed)
 Assert-Check 'duplicate host replica pose fails' (-not (Test-FourPlayerLog $fourPlayerSamePose).Passed)
+Assert-Check 'missing complete reset marker fails' (-not (Test-FourPlayerLog $fourPlayerMissingResetComplete).Passed)
+Assert-Check 'ambiguous reset completion fails' (-not (Test-FourPlayerLog $fourPlayerDuplicateResetComplete).Passed)
+Assert-Check 'post-reset poses cannot substitute for pre-reset poses' (-not (Test-FourPlayerLog $fourPlayerPostOnlyPoses).Passed)
 Assert-Check 'legacy marker union cannot pass' (-not (Test-FourPlayerLog $fourPlayerLegacyMarkers).Passed)
 
 Write-Output 'PARSER_CHECKS=PASS'
