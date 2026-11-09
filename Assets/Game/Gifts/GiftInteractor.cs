@@ -14,6 +14,7 @@ namespace SantasLittleHelpers
         private InputActionMap input;
         private InputAction interact;
         private GiftCarryable heldGift;
+        private NetworkGiftCarryable heldNetworkGift;
 
         internal Vector3 CarryPosition => carryAnchor != null ? carryAnchor.position : viewCamera.transform.position + viewCamera.transform.forward;
 
@@ -35,6 +36,8 @@ namespace SantasLittleHelpers
         private void OnDisable()
         {
             input?.Disable();
+            if (heldNetworkGift != null) heldNetworkGift.RequestGrip(false);
+            heldNetworkGift = null;
             if (heldGift != null)
                 heldGift.Release(this);
             heldGift = null;
@@ -50,6 +53,12 @@ namespace SantasLittleHelpers
 
         private void Interact()
         {
+            if (heldNetworkGift != null)
+            {
+                heldNetworkGift.RequestGrip(false);
+                heldNetworkGift = null;
+                return;
+            }
             if (heldGift != null)
             {
                 Drop(heldGift);
@@ -61,8 +70,14 @@ namespace SantasLittleHelpers
                 return;
 
             GiftCarryable gift = hit.collider.GetComponentInParent<GiftCarryable>();
-            if (gift != null && gift.TryPickUp(this))
-                heldGift = gift;
+            if (gift == null) return;
+            NetworkGiftCarryable networkGift = gift.GetComponent<NetworkGiftCarryable>();
+            if (networkGift != null && networkGift.IsSpawned)
+            {
+                networkGift.RequestGrip(true);
+                heldNetworkGift = networkGift;
+            }
+            else if (gift.TryPickUp(this)) heldGift = gift;
         }
 
         internal void Drop(GiftCarryable gift)

@@ -2,12 +2,33 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Netcode;
+using Unity.Netcode.Components;
 
 namespace SantasLittleHelpers.Editor
 {
     public static class GiftTestSceneBuilder
     {
         private const string Root = "Assets/Game/Gifts";
+
+        [MenuItem("Tools/Gifts/Configure Network Prefabs")]
+        public static void ConfigureNetworkPrefabs()
+        {
+            foreach (string name in new[] { "LightGift", "HeavyGift" })
+            {
+                string path = Root + "/Prefabs/" + name + ".prefab";
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null) continue;
+                GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                if (instance.GetComponent<NetworkObject>() == null) instance.AddComponent<NetworkObject>();
+                if (instance.GetComponent<NetworkTransform>() == null) instance.AddComponent<NetworkTransform>();
+                if (instance.GetComponent<NetworkRigidbody>() == null) instance.AddComponent<NetworkRigidbody>();
+                if (instance.GetComponent<NetworkGiftCarryable>() == null) instance.AddComponent<NetworkGiftCarryable>();
+                PrefabUtility.SaveAsPrefabAsset(instance, path);
+                Object.DestroyImmediate(instance);
+            }
+            AssetDatabase.SaveAssets();
+        }
 
         [MenuItem("Tools/Gifts/Build Test Scene")]
         public static void Build()
@@ -78,6 +99,10 @@ namespace SantasLittleHelpers.Editor
             body.constraints = RigidbodyConstraints.FreezeRotation;
             body.linearDamping = 0.15f;
             gift.AddComponent<GiftCarryable>();
+            gift.AddComponent<NetworkObject>();
+            gift.AddComponent<NetworkTransform>();
+            gift.AddComponent<NetworkRigidbody>();
+            gift.AddComponent<NetworkGiftCarryable>();
             PrefabUtility.SaveAsPrefabAsset(gift, Root + "/Prefabs/" + name + ".prefab");
             Object.DestroyImmediate(gift);
         }

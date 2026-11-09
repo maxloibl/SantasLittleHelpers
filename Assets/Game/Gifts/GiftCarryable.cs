@@ -16,14 +16,32 @@ namespace SantasLittleHelpers
         private Rigidbody body;
         private GiftInteractor holder;
         private float nextNoiseTime;
+        private bool networkHeld;
 
-        public bool IsHeld => holder != null;
+        public bool IsHeld => holder != null || networkHeld;
+
+        internal void SetNetworkHeld(bool value)
+        {
+            networkHeld = value;
+            if (value)
+            {
+                body.isKinematic = false;
+                body.useGravity = false;
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+            }
+            else if (holder == null)
+            {
+                body.useGravity = true;
+                body.isKinematic = false;
+            }
+        }
 
         private void Awake() => body = GetComponent<Rigidbody>();
 
         public bool TryPickUp(GiftInteractor interactor)
         {
-            if (interactor == null || holder != null || !isActiveAndEnabled)
+            if (interactor == null || holder != null || networkHeld || !isActiveAndEnabled)
                 return false;
 
             holder = interactor;
@@ -46,6 +64,7 @@ namespace SantasLittleHelpers
 
         private void FixedUpdate()
         {
+            if (networkHeld) return;
             if (holder == null)
                 return;
 
