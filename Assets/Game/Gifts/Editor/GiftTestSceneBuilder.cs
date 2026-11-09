@@ -22,12 +22,40 @@ namespace SantasLittleHelpers.Editor
                 GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
                 if (instance.GetComponent<NetworkObject>() == null) instance.AddComponent<NetworkObject>();
                 if (instance.GetComponent<NetworkTransform>() == null) instance.AddComponent<NetworkTransform>();
-                if (instance.GetComponent<NetworkRigidbody>() == null) instance.AddComponent<NetworkRigidbody>();
+                NetworkRigidbody networkRigidbody = instance.GetComponent<NetworkRigidbody>();
+                if (networkRigidbody == null) networkRigidbody = instance.AddComponent<NetworkRigidbody>();
+                ConfigureNetworkRigidbody(networkRigidbody);
                 if (instance.GetComponent<NetworkGiftCarryable>() == null) instance.AddComponent<NetworkGiftCarryable>();
                 PrefabUtility.SaveAsPrefabAsset(instance, path);
                 Object.DestroyImmediate(instance);
             }
             AssetDatabase.SaveAssets();
+        }
+
+        [MenuItem("Tools/Gifts/Validate Solo Prefab Physics")]
+        public static void ValidateSoloPrefabPhysics()
+        {
+            foreach (string name in new[] { "LightGift", "HeavyGift" })
+            {
+                string path = Root + "/Prefabs/" + name + ".prefab";
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                GameObject instance = prefab != null ? (GameObject)PrefabUtility.InstantiatePrefab(prefab) : null;
+                if (instance == null) throw new System.InvalidOperationException($"Missing gift prefab: {path}");
+                Rigidbody body = instance.GetComponent<Rigidbody>();
+                NetworkRigidbody networkRigidbody = instance.GetComponent<NetworkRigidbody>();
+                bool dynamicBeforeSpawn = body != null && !body.isKinematic && body.useGravity
+                    && networkRigidbody != null && !networkRigidbody.AutoUpdateKinematicState
+                    && !networkRigidbody.AutoSetKinematicOnDespawn;
+                Debug.Log($"GIFT_TEST_SOLO_PREFAB name={name} dynamicBeforeSpawn={dynamicBeforeSpawn} kinematic={body?.isKinematic} gravity={body?.useGravity} autoKinematic={networkRigidbody?.AutoUpdateKinematicState}");
+                Object.DestroyImmediate(instance);
+                if (!dynamicBeforeSpawn) throw new System.InvalidOperationException($"Gift is not dynamic before network spawn: {name}");
+            }
+        }
+
+        public static void BuildAndValidateSolo()
+        {
+            Build();
+            ValidateSoloPrefabPhysics();
         }
 
         [MenuItem("Tools/Gifts/Build Test Scene")]
@@ -101,7 +129,7 @@ namespace SantasLittleHelpers.Editor
             gift.AddComponent<GiftCarryable>();
             gift.AddComponent<NetworkObject>();
             gift.AddComponent<NetworkTransform>();
-            gift.AddComponent<NetworkRigidbody>();
+            ConfigureNetworkRigidbody(gift.AddComponent<NetworkRigidbody>());
             gift.AddComponent<NetworkGiftCarryable>();
             PrefabUtility.SaveAsPrefabAsset(gift, Root + "/Prefabs/" + name + ".prefab");
             Object.DestroyImmediate(gift);
@@ -139,6 +167,12 @@ namespace SantasLittleHelpers.Editor
             material.color = color;
             EditorUtility.SetDirty(material);
             return material;
+        }
+
+        private static void ConfigureNetworkRigidbody(NetworkRigidbody networkRigidbody)
+        {
+            networkRigidbody.AutoUpdateKinematicState = false;
+            networkRigidbody.AutoSetKinematicOnDespawn = false;
         }
 
         private static void EnsureFolder(string path)

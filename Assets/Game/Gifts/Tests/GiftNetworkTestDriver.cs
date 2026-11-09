@@ -53,6 +53,9 @@ namespace SantasLittleHelpers.Gifts.Tests
             LogRequest("competing-single-light-grab");
             light.RequestGrip(true);
             light.RequestGrip(true);
+            yield return new WaitForSeconds(0.5f);
+            bool ownsCompetingLightSlot = light.HasLocalGrip;
+            Debug.Log($"GIFT_TEST_COMPETING_GRIP client={OwnerClientId} hasSlot={ownsCompetingLightSlot} gripCount={light.GripCount}");
             yield return new WaitForSeconds(2f);
             LogRequest("release-single-light");
             light.RequestGrip(false);
@@ -68,6 +71,10 @@ namespace SantasLittleHelpers.Gifts.Tests
             {
                 LogRequest("separate-light-grab");
                 light.RequestGrip(true);
+                yield return new WaitForSeconds(0.75f);
+                bool ownsLightSlot = light.HasLocalGrip;
+                Debug.Log($"GIFT_TEST_LOCAL_GRIP client={OwnerClientId} action=separate-light hasSlot={ownsLightSlot}");
+                if (!ownsLightSlot) Debug.LogError("GIFT_TEST_LOCAL_GRIP_FAIL separate Light Gift request was not confirmed");
                 yield return new WaitForSeconds(6f);
                 Debug.Log("GIFT_TEST_CLIENT_EXIT disconnecting for cleanup coverage");
                 Application.Quit(0);
@@ -102,6 +109,7 @@ namespace SantasLittleHelpers.Gifts.Tests
                 {
                     Debug.Log($"GIFT_TEST_RESULT heavyTwoSlots={sawTwoHeavySlots} release={sawHeavyRelease} lightSingleSlot={sawOneLightGrip} lightPeak={peakLightGripCount} separateGifts={sawSeparateGifts} soloHeavySpeedPeak={peakSoloHeavySpeed:F3} soloHeavySpeedBound={peakSoloHeavySpeed <= 4.3f}");
                     NetworkManager.Shutdown();
+                    Application.Quit(0);
                     yield break;
                 }
                 yield return new WaitForSeconds(0.5f);
@@ -132,9 +140,12 @@ namespace SantasLittleHelpers.Gifts.Tests
             bool autoCleared = light.GripCount == 0;
             bool forceRelease = light.ForceReleaseOnServer();
             Debug.Log($"GIFT_TEST_DISCONNECT clientId={clientId} autoCleanup={autoCleared} forceRelease={forceRelease}");
-            heavy.RequestGrip(true);
+            transform.position = light.transform.position + Vector3.back;
+            light.RequestGrip(true);
             yield return new WaitForSeconds(0.5f);
-            Debug.Log($"GIFT_TEST_REGRAB afterDisconnect={heavy.GripCount == 1} heavyGrips={heavy.GripCount}");
+            bool regrabbedLight = light.GripCount == 1 && light.HasLocalGrip;
+            Debug.Log($"GIFT_TEST_REGRAB afterDisconnect={regrabbedLight} lightGrips={light.GripCount}");
+            if (!regrabbedLight) Debug.LogError("GIFT_TEST_REGRAB_FAIL disconnected Light Gift was not re-grabbed");
             yield return MoveOwnerForLoad();
         }
 

@@ -15,6 +15,10 @@ namespace SantasLittleHelpers
         private InputAction interact;
         private GiftCarryable heldGift;
         private NetworkGiftCarryable heldNetworkGift;
+        private NetworkGiftCarryable pendingNetworkGift;
+        private float pendingNetworkGripStartedAt;
+
+        private const float NetworkGripConfirmationTimeout = 2f;
 
         internal Vector3 CarryPosition => carryAnchor != null ? carryAnchor.position : viewCamera.transform.position + viewCamera.transform.forward;
 
@@ -37,7 +41,10 @@ namespace SantasLittleHelpers
         {
             input?.Disable();
             if (heldNetworkGift != null) heldNetworkGift.RequestGrip(false);
+            if (pendingNetworkGift != null && pendingNetworkGift != heldNetworkGift)
+                pendingNetworkGift.RequestGrip(false);
             heldNetworkGift = null;
+            pendingNetworkGift = null;
             if (heldGift != null)
                 heldGift.Release(this);
             heldGift = null;
@@ -47,8 +54,33 @@ namespace SantasLittleHelpers
 
         private void Update()
         {
+            UpdateNetworkGripState();
             if (interact != null && interact.WasPressedThisFrame())
                 Interact();
+        }
+
+        private void UpdateNetworkGripState()
+        {
+            if (heldNetworkGift != null && (!heldNetworkGift.IsSpawned || !heldNetworkGift.HasLocalGrip))
+                heldNetworkGift = null;
+
+            if (pendingNetworkGift == null) return;
+            if (!pendingNetworkGift.IsSpawned)
+            {
+                pendingNetworkGift = null;
+                return;
+            }
+
+            if (pendingNetworkGift.HasLocalGrip)
+            {
+                heldNetworkGift = pendingNetworkGift;
+                pendingNetworkGift = null;
+            }
+            else if (Time.unscaledTime - pendingNetworkGripStartedAt >= NetworkGripConfirmationTimeout)
+            {
+                // A competing grab may have won. Clear the pending request so E can retry.
+                pendingNetworkGift = null;
+            }
         }
 
         private void Interact()
@@ -59,6 +91,7 @@ namespace SantasLittleHelpers
                 heldNetworkGift = null;
                 return;
             }
+            if (pendingNetworkGift != null) return;
             if (heldGift != null)
             {
                 Drop(heldGift);
@@ -75,7 +108,8 @@ namespace SantasLittleHelpers
             if (networkGift != null && networkGift.IsSpawned)
             {
                 networkGift.RequestGrip(true);
-                heldNetworkGift = networkGift;
+                pendingNetworkGift = networkGift;
+                pendingNetworkGripStartedAt = Time.unscaledTime;
             }
             else if (gift.TryPickUp(this)) heldGift = gift;
         }

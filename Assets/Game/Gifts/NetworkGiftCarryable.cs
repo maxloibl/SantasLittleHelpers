@@ -14,11 +14,16 @@ namespace SantasLittleHelpers
         [SerializeField, Min(0.1f)] private float soloHeavySpeed = 0.35f;
         [SerializeField, Min(0.1f)] private float twoPlayerHeavySpeed = 1f;
         private readonly HashSet<ulong> gripSlots = new HashSet<ulong>();
+        private readonly NetworkList<ulong> gripOwners = new NetworkList<ulong>(
+            null,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
         private Rigidbody body;
         private GiftCarryable carryable;
         private NetworkVariable<int> gripCount = new NetworkVariable<int>(0);
 
         public int GripCount => gripCount.Value;
+        public bool HasLocalGrip => IsSpawned && NetworkManager != null && gripOwners.Contains(NetworkManager.LocalClientId);
 
         /// <summary>Host hook for capture, delivery, or scripted drops.</summary>
         public bool ForceReleaseOnServer()
@@ -36,8 +41,15 @@ namespace SantasLittleHelpers
 
         public override void OnNetworkSpawn()
         {
-            if (!IsServer) { body.isKinematic = true; body.useGravity = false; }
-            if (IsServer) { gripCount.Value = 0; NetworkManager.OnClientDisconnectCallback += OnClientDisconnect; }
+            body.isKinematic = !IsServer;
+            body.useGravity = IsServer;
+            if (IsServer)
+            {
+                gripSlots.Clear();
+                gripOwners.Clear();
+                gripCount.Value = 0;
+                NetworkManager.OnClientDisconnectCallback += OnClientDisconnect;
+            }
         }
 
         public void RequestGrip(bool grab)
@@ -60,10 +72,12 @@ namespace SantasLittleHelpers
                 if (gripSlots.Count >= (heavy ? 2 : 1) || !IsWithinReach(client.PlayerObject.transform)) return;
                 if (gripSlots.Count == 0) carryable.SetNetworkHeld(true);
                 gripSlots.Add(sender);
+                gripOwners.Add(sender);
             }
             else
             {
                 gripSlots.Remove(sender);
+                if (gripOwners.Contains(sender)) gripOwners.Remove(sender);
                 if (gripSlots.Count == 0) carryable.SetNetworkHeld(false);
             }
             gripCount.Value = gripSlots.Count;
@@ -101,11 +115,14 @@ namespace SantasLittleHelpers
         public override void OnNetworkDespawn()
         {
             if (IsServer) { NetworkManager.OnClientDisconnectCallback -= OnClientDisconnect; ClearGrips(); }
+            body.isKinematic = false;
+            body.useGravity = true;
         }
 
         private void ReleaseClient(ulong clientId)
         {
             if (!gripSlots.Remove(clientId)) return;
+            if (gripOwners.Contains(clientId)) gripOwners.Remove(clientId);
             gripCount.Value = gripSlots.Count;
             if (gripSlots.Count == 0) carryable.SetNetworkHeld(false);
         }
@@ -113,6 +130,7 @@ namespace SantasLittleHelpers
         private void ClearGrips()
         {
             gripSlots.Clear();
+            if (IsServer) gripOwners.Clear();
             if (carryable != null) carryable.SetNetworkHeld(false);
             if (IsServer) gripCount.Value = 0;
         }
