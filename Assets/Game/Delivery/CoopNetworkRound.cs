@@ -13,6 +13,13 @@ namespace SantasLittleHelpers.Delivery
     {
         private readonly NetworkVariable<int> phase = new NetworkVariable<int>(0);
         private readonly NetworkVariable<int> delivered = new NetworkVariable<int>(0);
+        private static readonly Vector3[] PlayerStartOffsets =
+        {
+            new Vector3(-.8f, 0, 1.75f),
+            new Vector3(.8f, 0, 1.75f),
+            new Vector3(-1.5f, 0, 1.4f),
+            new Vector3(1.5f, 0, 1.4f)
+        };
         private GameObject lightPrefab;
         private GameObject heavyPrefab;
         private NetworkObject lightGift;
@@ -21,6 +28,9 @@ namespace SantasLittleHelpers.Delivery
         private Collider deliveryTrigger;
         private ResidentBrain[] residents;
         private readonly Dictionary<ulong, Vector3> playerStarts = new Dictionary<ulong, Vector3>();
+        private readonly Dictionary<ulong, int> playerStartSlots = new Dictionary<ulong, int>();
+        private readonly HashSet<ulong> playerPoseReported = new HashSet<ulong>();
+        private float nextPlayerPoseAuditAt;
         private float smokeStartedAt;
         private bool smokeHeavyReported;
         private bool smokeCaptureAttempted;
@@ -30,6 +40,7 @@ namespace SantasLittleHelpers.Delivery
         private bool smokeCapturedGrabRejectReported;
         private bool smokeDeliveryPlaced;
         private bool smokeRestarted;
+        private bool smokeFourPlayerResetStarted;
         private bool quietDeliveryReported;
         private bool quietReturnReported;
         private bool quietResidentHealthy = true;
@@ -66,6 +77,7 @@ namespace SantasLittleHelpers.Delivery
                 smokeStartedAt = Time.unscaledTime;
                 SpawnMissionGifts();
                 NetworkManager.OnClientConnectedCallback += OnClientConnected;
+                NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
             }
             phase.OnValueChanged += OnPhaseChanged;
             delivered.OnValueChanged += OnDeliveredChanged;
@@ -74,12 +86,25 @@ namespace SantasLittleHelpers.Delivery
         public override void OnNetworkDespawn()
         {
             phase.OnValueChanged -= OnPhaseChanged; delivered.OnValueChanged -= OnDeliveredChanged;
-            if (IsServer && NetworkManager != null) NetworkManager.OnClientConnectedCallback -= OnClientConnected;
+            if (IsServer && NetworkManager != null)
+            {
+                NetworkManager.OnClientConnectedCallback -= OnClientConnected;
+                NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
+            }
         }
 
         private void OnClientConnected(ulong clientId)
         {
             InitializePlayer(clientId);
+        }
+
+        private void OnClientDisconnected(ulong clientId)
+        {
+            if (playerStartSlots.TryGetValue(clientId, out int slot))
+                Debug.Log($"COOP_PLAYER_SLOT_RELEASED owner={clientId} slot={slot}");
+            playerStarts.Remove(clientId);
+            playerStartSlots.Remove(clientId);
+            playerPoseReported.Remove(clientId);
         }
 
         public void InitializePlayer(ulong clientId)
@@ -88,16 +113,44 @@ namespace SantasLittleHelpers.Delivery
             if (!NetworkManager.ConnectedClients.TryGetValue(clientId, out NetworkClient client) || client.PlayerObject == null) return;
             Vector3 home = sleigh != null ? sleigh.position : new Vector3(0,0,-6.25f);
             home.y = .05f;
-            Vector3 offset = clientId == NetworkManager.ServerClientId ? new Vector3(-.8f,0,1.75f) : new Vector3(.8f,0,1.75f);
-            Vector3 start = home + offset;
+            if (!playerStartSlots.TryGetValue(clientId, out int slot))
+            {
+                bool[] occupied = new bool[PlayerStartOffsets.Length];
+                foreach (int assignedSlot in playerStartSlots.Values)
+                    if (assignedSlot >= 0 && assignedSlot < occupied.Length) occupied[assignedSlot] = true;
+
+                slot = -1;
+                if (clientId == NetworkManager.ServerClientId && !occupied[0]) slot = 0;
+                else if (clientId != NetworkManager.ServerClientId && !occupied[1]) slot = 1;
+                else
+                    for (int i = 0; i < occupied.Length; i++)
+                        if (!occupied[i]) { slot = i; break; }
+
+                if (slot < 0) return;
+                playerStartSlots.Add(clientId, slot);
+            }
+
+            Vector3 start = home + PlayerStartOffsets[slot];
             playerStarts[clientId] = start;
-            Debug.Log($"COOP_PLAYER_START owner={clientId} position={start}");
+            playerPoseReported.Remove(clientId);
+            ApplyPlayerPose(client.PlayerObject, start);
+            NetworkObjectReference playerRef = new NetworkObjectReference(client.PlayerObject);
+            SetPlayerPoseOwnerRpc(playerRef, start, slot);
+            Debug.Log($"COOP_PLAYER_START owner={clientId} slot={slot} position={start}");
         }
 
         private void Update()
         {
             if (!IsSpawned) return;
-            if (IsServer) { TickServer(); TickSmoke(); }
+            if (IsServer) { TickServer(); TickSmoke(); TickPlayerPoseAudit(); }
+            if (IsServer && !smokeFourPlayerResetStarted &&
+                System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-four-player-reset-smoke") &&
+                NetworkManager.ConnectedClientsList.Count >= 4 && Time.unscaledTime - smokeStartedAt >= 6f)
+            {
+                smokeFourPlayerResetStarted = true;
+                Debug.Log("COOP_FOUR_PLAYER_RESET_SMOKE started=true players=" + NetworkManager.ConnectedClientsList.Count);
+                ResetRoundServer();
+            }
             if (IsServer && Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame && phase.Value >= 2) ResetRoundServer();
         }
 
@@ -123,6 +176,21 @@ namespace SantasLittleHelpers.Delivery
             }
             phase.Value = 2;
             Debug.Log("COOP_ROUND_COMPLETE players=" + NetworkManager.ConnectedClientsList.Count);
+        }
+
+        private void TickPlayerPoseAudit()
+        {
+            if (Time.unscaledTime < nextPlayerPoseAuditAt) return;
+            nextPlayerPoseAuditAt = Time.unscaledTime + .25f;
+            foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+            {
+                if (playerPoseReported.Contains(client.ClientId) || client.PlayerObject == null ||
+                    !playerStarts.TryGetValue(client.ClientId, out Vector3 expected)) continue;
+                Vector3 actual = client.PlayerObject.transform.position;
+                if ((actual - expected).sqrMagnitude > .05f * .05f) continue;
+                playerPoseReported.Add(client.ClientId);
+                Debug.Log($"COOP_PLAYER_REPLICA_POSITION owner={client.ClientId} slot={playerStartSlots[client.ClientId]} position={actual}");
+            }
         }
 
         private void TickSmoke()
@@ -333,11 +401,12 @@ namespace SantasLittleHelpers.Delivery
             lightGift = null; heavyGift = null;
             CaptureRoundCoordinator.Instance?.ResetRoundServer();
             foreach (ResidentBrain resident in residents) if (resident != null) resident.ResetForRound();
+            playerPoseReported.Clear();
             foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
                 if (client.PlayerObject != null && playerStarts.TryGetValue(client.ClientId, out Vector3 start))
                 {
                     NetworkObjectReference playerRef = new NetworkObjectReference(client.PlayerObject);
-                    ResetPlayerOwnerRpc(playerRef, start);
+                    SetPlayerPoseOwnerRpc(playerRef, start, playerStartSlots[client.ClientId], true);
                 }
             delivered.Value = 0; phase.Value = 0;
             SpawnMissionGifts();
@@ -345,12 +414,18 @@ namespace SantasLittleHelpers.Delivery
         }
 
         [Rpc(SendTo.ClientsAndHost, InvokePermission = RpcInvokePermission.Server)]
-        private void ResetPlayerOwnerRpc(NetworkObjectReference reference, Vector3 position, RpcParams rpcParams = default)
+        private void SetPlayerPoseOwnerRpc(NetworkObjectReference reference, Vector3 position, int slot, bool reset = false, RpcParams rpcParams = default)
         {
             if (rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId) return;
             if (!reference.TryGet(out NetworkObject player) || !player.IsOwner) return;
+            ApplyPlayerPose(player, position);
+            Debug.Log($"COOP_PLAYER_POSE_APPLIED owner={player.OwnerClientId} slot={slot} reset={reset} position={position} peer={NetworkManager.LocalClientId}");
+        }
+
+        private static void ApplyPlayerPose(NetworkObject player, Vector3 position)
+        {
             player.transform.SetPositionAndRotation(position, Quaternion.identity);
-            if (player.TryGetComponent(out OwnerNetworkTransform networkTransform))
+            if (player.IsOwner && player.TryGetComponent(out OwnerNetworkTransform networkTransform))
                 networkTransform.Teleport(position, Quaternion.identity, player.transform.lossyScale);
         }
 
