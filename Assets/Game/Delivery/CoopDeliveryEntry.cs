@@ -79,6 +79,13 @@ namespace SantasLittleHelpers.Delivery
         {
             PrepareAuthoredWorld();
             string[] args = Environment.GetCommandLineArgs();
+            // Product sessions start through the adapter after additive loading; legacy CLI
+            // startup must not create a second manager while that product flow is booting.
+            if (Array.Exists(args, arg => arg.StartsWith("--product-smoke=", StringComparison.Ordinal)))
+            {
+                menu = false;
+                return;
+            }
             foreach (string arg in args)
             {
                 if (arg.StartsWith("--address=")) address = arg.Substring(10);
