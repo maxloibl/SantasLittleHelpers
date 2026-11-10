@@ -7,6 +7,8 @@ namespace SantasLittleHelpers
     [RequireComponent(typeof(CharacterController))]
     public sealed class FirstPersonController : MonoBehaviour
     {
+        public const float DefaultMouseSensitivity = 0.12f;
+
         [SerializeField] private Transform viewPivot;
         [SerializeField] private LayerMask ceilingLayers = ~(1 << 8);
 
@@ -18,10 +20,13 @@ namespace SantasLittleHelpers
         [SerializeField, Min(0.01f)] private float gravity = 20f;
 
         [Header("View")]
-        [SerializeField, Min(0f)] private float mouseSensitivity = 0.12f;
+        [SerializeField, Min(0f)] private float mouseSensitivity = DefaultMouseSensitivity;
         [SerializeField, Range(1f, 89f)] private float pitchLimit = 85f;
         [SerializeField, Min(0f)] private float crouchHeight = 1.1f;
         [SerializeField, Min(0.01f)] private float stanceSpeed = 5f;
+
+        private static bool hasGlobalSensitivity;
+        private static float globalMouseSensitivity = DefaultMouseSensitivity;
 
         private CharacterController controller;
         private InputActionMap input;
@@ -39,6 +44,26 @@ namespace SantasLittleHelpers
         private float verticalSpeed;
         private bool grounded;
         private bool crouched;
+
+        public float MouseSensitivity
+        {
+            get => mouseSensitivity;
+            set => mouseSensitivity = Mathf.Max(0f, value);
+        }
+
+        public static float ActiveMouseSensitivity => globalMouseSensitivity;
+
+        public static void ApplyGlobalMouseSensitivity(float sensitivity)
+        {
+            globalMouseSensitivity = Mathf.Max(0f, sensitivity);
+            hasGlobalSensitivity = true;
+            foreach (FirstPersonController controller in
+                     FindObjectsByType<FirstPersonController>(FindObjectsInactive.Exclude))
+            {
+                if (controller != null && controller.isActiveAndEnabled)
+                    controller.mouseSensitivity = globalMouseSensitivity;
+            }
+        }
 
         private void Awake()
         {
@@ -71,7 +96,13 @@ namespace SantasLittleHelpers
             releaseCursor = input.AddAction("ReleaseCursor", InputActionType.Button, "<Keyboard>/escape");
         }
 
-        private void OnEnable() => input?.Enable();
+        private void OnEnable()
+        {
+            if (hasGlobalSensitivity)
+                mouseSensitivity = globalMouseSensitivity;
+
+            input?.Enable();
+        }
 
         private void OnDisable()
         {
