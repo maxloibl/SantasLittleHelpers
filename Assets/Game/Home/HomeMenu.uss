@@ -1,0 +1,552 @@
+.home-root {
+    flex-grow: 1;
+    background-color: rgb(24, 38, 45);
+    color: rgb(247, 238, 222);
+    font-size: 15px;
+}
+
+.home-backdrop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgb(24, 38, 45);
+    overflow: hidden;
+}
+
+.home-glow {
+    position: absolute;
+    left: -8%;
+    top: -22%;
+    width: 62%;
+    height: 78%;
+    border-radius: 50%;
+    background-color: rgba(203, 132, 74, 0.16);
+}
+
+.home-snow-dot {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: rgba(247, 238, 222, 0.22);
+}
+
+.snow-0 { left: 8%; top: 14%; }
+.snow-1 { left: 24%; top: 8%; width: 4px; height: 4px; }
+.snow-2 { left: 46%; top: 18%; width: 5px; height: 5px; }
+.snow-3 { left: 68%; top: 9%; }
+.snow-4 { left: 88%; top: 22%; width: 4px; height: 4px; }
+.snow-5 { left: 12%; top: 62%; width: 5px; height: 5px; }
+.snow-6 { left: 38%; top: 78%; }
+.snow-7 { left: 61%; top: 66%; width: 4px; height: 4px; }
+.snow-8 { left: 80%; top: 84%; width: 5px; height: 5px; }
+.snow-9 { left: 93%; top: 54%; }
+
+.home-scroll {
+    flex-grow: 1;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.home-shell {
+    align-self: center;
+    width: 94%;
+    max-width: 1280px;
+    padding: 28px 10px 44px 10px;
+}
+
+.home-header {
+    margin-bottom: 12px;
+}
+
+.home-kicker {
+    color: rgb(226, 174, 105);
+    font-size: 12px;
+    letter-spacing: 2px;
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+}
+
+.home-title {
+    color: rgb(255, 246, 229);
+    font-size: 38px;
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+}
+
+.home-subtitle {
+    color: rgb(198, 210, 208);
+    font-size: 16px;
+    white-space: normal;
+}
+
+.home-status {
+    margin: 12px 0 16px 0;
+    padding: 11px 14px;
+    border-radius: 10px;
+    white-space: normal;
+    border-width: 1px;
+}
+
+.status-info {
+    background-color: rgba(54, 104, 107, 0.45);
+    border-color: rgba(113, 180, 177, 0.55);
+    color: rgb(226, 246, 243);
+}
+
+.status-success {
+    background-color: rgba(50, 108, 72, 0.5);
+    border-color: rgba(119, 188, 137, 0.62);
+    color: rgb(230, 249, 234);
+}
+
+.status-warning {
+    background-color: rgba(132, 92, 35, 0.5);
+    border-color: rgba(224, 169, 82, 0.62);
+    color: rgb(255, 238, 207);
+}
+
+.status-error {
+    background-color: rgba(126, 43, 43, 0.55);
+    border-color: rgba(226, 121, 112, 0.65);
+    color: rgb(255, 231, 227);
+}
+
+.home-content {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.home-card {
+    flex-grow: 1;
+    flex-basis: 0;
+    background-color: rgb(246, 236, 216);
+    border-width: 1px;
+    border-color: rgb(199, 171, 126);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 18px;
+    color: rgb(57, 42, 27);
+}
+
+.home-card-slots {
+    margin-right: 18px;
+}
+
+.home-card-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.home-card-title {
+    color: rgb(49, 35, 23);
+    font-size: 24px;
+    -unity-font-style: bold;
+}
+
+.home-card-subtitle {
+    color: rgb(72, 48, 30);
+    font-size: 18px;
+    -unity-font-style: bold;
+    margin-bottom: 2px;
+}
+
+.home-copy,
+.home-footnote,
+.home-muted {
+    color: rgb(101, 80, 58);
+    font-size: 13px;
+    white-space: normal;
+}
+
+.home-copy {
+    margin-bottom: 12px;
+}
+
+.home-footnote {
+    margin-top: 12px;
+    font-size: 12px;
+}
+
+.home-empty {
+    display: none;
+    color: rgb(101, 80, 58);
+    font-size: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background-color: rgb(238, 224, 198);
+    white-space: normal;
+}
+
+.home-slot-scroll {
+    max-height: 290px;
+    margin-bottom: 10px;
+}
+
+.home-slot-list {
+    flex-grow: 1;
+}
+
+.home-slot-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 52px;
+    padding: 8px 11px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: rgb(214, 193, 158);
+    background-color: rgb(253, 247, 235);
+    color: rgb(57, 42, 27);
+}
+
+.home-slot-row:hover {
+    background-color: rgb(255, 251, 242);
+    border-color: rgb(190, 152, 94);
+}
+
+.home-slot-row.slot-selected {
+    border-width: 2px;
+    border-color: rgb(173, 89, 49);
+    background-color: rgb(255, 247, 230);
+}
+
+.home-slot-row.slot-unavailable {
+    background-color: rgb(239, 226, 210);
+}
+
+.home-slot-name {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    font-size: 15px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.home-slot-detail {
+    width: 190px;
+    flex-shrink: 0;
+    color: rgb(112, 88, 62);
+    font-size: 12px;
+    -unity-text-align: middle-right;
+}
+
+.home-slot-status {
+    margin-left: 8px;
+    padding: 4px 9px;
+    border-radius: 9px;
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.home-slot-status.status-ok {
+    background-color: rgb(204, 228, 203);
+    color: rgb(39, 88, 49);
+}
+
+.home-slot-status.status-warning {
+    background-color: rgb(244, 220, 169);
+    color: rgb(107, 72, 19);
+}
+
+.home-slot-status.status-error {
+    background-color: rgb(239, 197, 190);
+    color: rgb(123, 39, 32);
+}
+
+.home-selection {
+    padding: 9px 11px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    background-color: rgb(238, 224, 198);
+    color: rgb(82, 63, 42);
+    font-size: 13px;
+    white-space: normal;
+}
+
+.home-selection.selection-ok {
+    background-color: rgb(219, 234, 210);
+    color: rgb(44, 84, 51);
+}
+
+.home-selection.selection-error {
+    background-color: rgb(244, 207, 199);
+    color: rgb(117, 42, 33);
+}
+
+.home-selection.selection-muted {
+    background-color: rgb(238, 224, 198);
+    color: rgb(101, 80, 58);
+}
+
+.home-field-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 9px;
+}
+
+.home-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 38px;
+    margin-right: 8px;
+    background-color: rgb(255, 250, 240);
+    border-width: 1px;
+    border-color: rgb(191, 162, 116);
+    border-radius: 10px;
+    padding: 2px 9px;
+    color: rgb(52, 38, 24);
+}
+
+.home-field:hover {
+    border-color: rgb(159, 120, 68);
+}
+
+.home-field:focus {
+    border-width: 2px;
+    border-color: rgb(174, 89, 49);
+}
+
+.home-field .unity-text-field__input {
+    color: rgb(52, 38, 24);
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    padding: 0;
+}
+
+.home-field .unity-text-field__placeholder {
+    color: rgb(145, 124, 98);
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.home-port-field {
+    flex-grow: 0;
+    width: 112px;
+}
+
+.home-button-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.home-button {
+    min-height: 38px;
+    padding: 9px 15px;
+    margin-right: 8px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: rgb(170, 143, 104);
+    background-color: rgb(236, 223, 199);
+    color: rgb(62, 45, 29);
+    font-size: 14px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.home-button:hover {
+    background-color: rgb(244, 232, 211);
+    border-color: rgb(146, 111, 65);
+}
+
+.home-button:active {
+    background-color: rgb(222, 205, 175);
+}
+
+.home-button:focus {
+    border-width: 2px;
+    border-color: rgb(58, 111, 109);
+}
+
+.home-button:disabled {
+    opacity: 0.45;
+}
+
+.home-button-primary {
+    background-color: rgb(174, 79, 49);
+    border-color: rgb(139, 58, 34);
+    color: rgb(255, 248, 236);
+}
+
+.home-button-primary:hover {
+    background-color: rgb(189, 91, 58);
+    border-color: rgb(139, 58, 34);
+}
+
+.home-button-secondary {
+    background-color: rgb(53, 106, 101);
+    border-color: rgb(38, 82, 78);
+    color: rgb(244, 251, 248);
+}
+
+.home-button-secondary:hover {
+    background-color: rgb(62, 121, 115);
+    border-color: rgb(38, 82, 78);
+}
+
+.home-button-danger {
+    background-color: rgb(143, 52, 47);
+    border-color: rgb(113, 37, 33);
+    color: rgb(255, 243, 240);
+}
+
+.home-button-danger:hover {
+    background-color: rgb(160, 61, 55);
+    border-color: rgb(113, 37, 33);
+}
+
+.home-button-ghost {
+    background-color: rgba(0, 0, 0, 0);
+    border-color: rgb(181, 155, 116);
+    color: rgb(78, 58, 36);
+}
+
+.home-button-ghost:hover {
+    background-color: rgba(234, 219, 192, 0.8);
+}
+
+.home-button-step {
+    min-width: 38px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    margin-right: 7px;
+    margin-left: 7px;
+    font-size: 18px;
+    -unity-text-align: middle-center;
+}
+
+.home-button-compact {
+    min-height: 30px;
+    padding: 5px 11px;
+    margin: 0;
+    font-size: 12px;
+}
+
+.home-launch {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 9px;
+}
+
+.home-join {
+    width: 100%;
+    margin-right: 0;
+    margin-top: 4px;
+}
+
+.home-divider {
+    height: 1px;
+    background-color: rgb(210, 190, 158);
+    margin: 18px 0 16px 0;
+}
+
+.home-settings-toggle-row {
+    flex-direction: row;
+    align-items: center;
+    margin: 4px 0 10px 0;
+}
+
+.home-settings-toggle {
+    margin-right: 12px;
+    margin-bottom: 0;
+}
+
+.home-settings-card {
+    margin-bottom: 18px;
+}
+
+.home-step-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 9px;
+}
+
+.home-step-label {
+    flex-grow: 1;
+    color: rgb(64, 47, 30);
+    font-size: 14px;
+}
+
+.home-step-value {
+    min-width: 64px;
+    color: rgb(64, 47, 30);
+    font-size: 15px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.home-step-button-wide {
+    min-width: 126px;
+}
+
+.home-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(12, 20, 24, 0.72);
+}
+
+.home-dialog {
+    width: 88%;
+    max-width: 470px;
+    padding: 24px;
+    border-radius: 18px;
+    border-width: 1px;
+    border-color: rgb(199, 171, 126);
+    background-color: rgb(246, 236, 216);
+    color: rgb(57, 42, 27);
+}
+
+.home-busy .home-slot-scroll {
+    opacity: 0.72;
+}
+
+.home-narrow .home-content {
+    flex-direction: column;
+}
+
+.home-narrow .home-card-slots {
+    margin-right: 0;
+}
+
+.home-narrow .home-card {
+    width: 100%;
+    flex-basis: auto;
+}
+
+.home-narrow .home-title {
+    font-size: 30px;
+}
+
+.home-narrow .home-slot-detail {
+    width: 145px;
+}
+
+.home-narrow .home-field-row {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.home-narrow .home-field {
+    margin-right: 0;
+    margin-bottom: 7px;
+}
+
+.home-narrow .home-port-field {
+    width: auto;
+}
+
+.home-narrow .home-settings-toggle-row {
+    flex-direction: column;
+    align-items: flex-start;
+}
