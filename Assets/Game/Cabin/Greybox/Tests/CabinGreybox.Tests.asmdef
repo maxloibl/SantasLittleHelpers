@@ -1,0 +1,8 @@
+{
+  "rootNamespace": "SantasLittleHelpers.Cabin.Greybox.Tests",
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "name": "SantasLittleHelpers.Cabin.Greybox.Tests",
+  "autoReferenced": false
+}
