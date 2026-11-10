@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using SantasLittleHelpers.AI;
 using SantasLittleHelpers.Capture;
 using SantasLittleHelpers.Networking;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -13,6 +15,9 @@ namespace SantasLittleHelpers.Delivery
     {
         private readonly NetworkVariable<int> phase = new NetworkVariable<int>(0);
         private readonly NetworkVariable<int> delivered = new NetworkVariable<int>(0);
+        private readonly NetworkVariable<bool> active = new NetworkVariable<bool>(false);
+        private readonly NetworkVariable<FixedString64Bytes> roundId = new NetworkVariable<FixedString64Bytes>(default);
+        private bool completionReported;
         private static readonly Vector3[] PlayerStartOffsets =
         {
             new Vector3(-.8f, 0, 1.75f),
@@ -51,9 +56,12 @@ namespace SantasLittleHelpers.Delivery
         private float quietNextResidentSampleAt;
         private Vector3 quietResidentLastPosition;
         private readonly HashSet<ulong> quietHouseVisited = new HashSet<ulong>();
-        public int CurrentPhase => phase.Value;
+        public int CurrentPhase => active.Value ? phase.Value : -1;
+        public Guid CurrentRoundId => Guid.TryParse(roundId.Value.ToString(), out Guid id) ? id : Guid.Empty;
+        public int DeliveredCount => delivered.Value;
+        public event Action<MissionCompleted> Completed;
         internal bool CaptureSmokeCanRescue => smokeCaptureGripReleaseReported && smokeCapturedGrabRejectReported;
-        public bool IsTerminal => phase.Value >= 2;
+        public bool IsTerminal => active.Value && phase.Value >= 2;
         public bool QuietPassengerReturnedAfterHouseVisit
         {
             get
@@ -76,8 +84,6 @@ namespace SantasLittleHelpers.Delivery
         {
             if (IsServer)
             {
-                smokeStartedAt = Time.unscaledTime;
-                SpawnMissionGifts();
                 NetworkManager.OnClientConnectedCallback += OnClientConnected;
                 NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
             }
@@ -93,6 +99,55 @@ namespace SantasLittleHelpers.Delivery
                 NetworkManager.OnClientConnectedCallback -= OnClientConnected;
                 NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
             }
+        }
+
+        /// <summary>Begins this server-owned round after every peer has loaded and acknowledged the mission.</summary>
+        public bool BeginServerRound(Guid id)
+        {
+            if (!IsSpawned || !IsServer || id == Guid.Empty || active.Value) return false;
+            roundId.Value = id.ToString("D");
+            completionReported = false;
+            delivered.Value = 0;
+            phase.Value = 0;
+            smokeStartedAt = Time.unscaledTime;
+            active.Value = true;
+            SpawnMissionGifts();
+            return true;
+        }
+
+        /// <summary>Stops mission-owned gameplay objects without taking ownership of session shutdown.</summary>
+        public bool EndServerRound()
+        {
+            if (!IsSpawned || !IsServer) return false;
+            bool reportAbandoned = active.Value && phase.Value < 2;
+            bool reportFailed = active.Value && phase.Value == 3;
+            active.Value = false;
+            DespawnGift(ref lightGift);
+            DespawnGift(ref heavyGift);
+            if (residents != null)
+                foreach (ResidentBrain resident in residents)
+                {
+                    if (resident == null) continue;
+                    resident.Target = null;
+                    NetworkObject residentObject = resident.GetComponent<NetworkObject>();
+                    if (residentObject != null && residentObject.IsSpawned) residentObject.Despawn(true);
+                }
+            if (reportFailed)
+                Debug.Log($"MISSION_EVENT type=Failed roundId={roundId.Value} peerId={NetworkManager.ServerClientId}");
+            else if (reportAbandoned)
+                Debug.Log($"MISSION_EVENT type=Abandoned roundId={roundId.Value} peerId={NetworkManager.ServerClientId}");
+            NetworkObject.Despawn(true);
+            return true;
+        }
+
+        private static void DespawnGift(ref NetworkObject gift)
+        {
+            if (gift != null && gift.IsSpawned)
+            {
+                gift.GetComponent<NetworkGiftCarryable>()?.ForceReleaseOnServer();
+                gift.Despawn(true);
+            }
+            gift = null;
         }
 
         private void OnClientConnected(ulong clientId)
@@ -127,7 +182,7 @@ namespace SantasLittleHelpers.Delivery
 
         public void InitializePlayer(ulong clientId)
         {
-            if (!IsServer) return;
+            if (!IsServer || !active.Value) return;
             if (!NetworkManager.ConnectedClients.TryGetValue(clientId, out NetworkClient client) || client.PlayerObject == null) return;
             Vector3 home = sleigh != null ? sleigh.position : new Vector3(0,0,-6.25f);
             home.y = .05f;
@@ -159,7 +214,7 @@ namespace SantasLittleHelpers.Delivery
 
         private void Update()
         {
-            if (!IsSpawned) return;
+            if (!IsSpawned || !active.Value) return;
             if (IsServer) { TickServer(); TickSmoke(); TickPlayerPoseAudit(); }
             if (IsServer && !smokeFourPlayerResetStarted &&
                 System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-four-player-reset-smoke") &&
@@ -194,6 +249,7 @@ namespace SantasLittleHelpers.Delivery
             }
             phase.Value = 2;
             Debug.Log("COOP_ROUND_COMPLETE players=" + NetworkManager.ConnectedClientsList.Count);
+            RaiseCompletedOnce();
         }
 
         private void TickPlayerPoseAudit()
@@ -451,7 +507,7 @@ namespace SantasLittleHelpers.Delivery
 
         private void ResetRoundServer()
         {
-            if (!IsServer) return;
+            if (!IsServer || !active.Value) return;
             if (lightGift != null && lightGift.IsSpawned) { lightGift.GetComponent<NetworkGiftCarryable>()?.ForceReleaseOnServer(); lightGift.Despawn(true); }
             if (heavyGift != null && heavyGift.IsSpawned) { heavyGift.GetComponent<NetworkGiftCarryable>()?.ForceReleaseOnServer(); heavyGift.Despawn(true); }
             lightGift = null; heavyGift = null;
@@ -465,8 +521,10 @@ namespace SantasLittleHelpers.Delivery
                     SetPlayerPoseOwnerRpc(playerRef, start, playerStartSlots[client.ClientId], true);
                 }
             delivered.Value = 0; phase.Value = 0;
+            roundId.Value = Guid.NewGuid().ToString("D");
+            completionReported = false;
             SpawnMissionGifts();
-            Debug.Log("COOP_HOST_RESET complete=true");
+            Debug.Log($"COOP_HOST_RESET complete=true roundId={roundId.Value}");
         }
 
         [Rpc(SendTo.ClientsAndHost, InvokePermission = RpcInvokePermission.Server)]
@@ -503,8 +561,18 @@ namespace SantasLittleHelpers.Delivery
         private void OnDeliveredChanged(int oldValue, int newValue) => Debug.Log($"COOP_PROGRESS delivered={newValue} peer={NetworkManager.LocalClientId}");
         private void OnGUI()
         {
+            if (!active.Value) return;
             string label = phase.Value == 0 ? "Deliver the light gift" : phase.Value == 1 ? "Return together to the sleigh" : phase.Value == 2 ? "Round complete — host: R to restart" : "Everyone is captured — host: R to restart";
             GUI.Box(new Rect(16, 16, 360, 75), "Coop delivery · " + delivered.Value + "/1\n" + label + "\nWASD/mouse · E grab/drop/rescue · host: R restart");
+        }
+
+        private void RaiseCompletedOnce()
+        {
+            if (!IsServer || !active.Value || completionReported || !Guid.TryParse(roundId.Value.ToString(), out Guid id)) return;
+            completionReported = true;
+            var completed = new MissionCompleted(id, "delivery-v1", DateTimeOffset.UtcNow);
+            Debug.Log($"MISSION_EVENT type=Completed roundId={id} peerId={NetworkManager.ServerClientId}");
+            Completed?.Invoke(completed);
         }
     }
 }
