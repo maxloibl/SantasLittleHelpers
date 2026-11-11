@@ -1,0 +1,25 @@
+CabinKit #43 showcase budget (measured by CabinKitBuilder)
+CabinFloor_Visual: triangles=112 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/floor-wood.fbx
+CabinFloorSnow_Visual: triangles=112 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/floor-wood-snow.fbx
+CabinWall_Visual: triangles=84 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/cabin-wall.fbx
+CabinCorner_Visual: triangles=10 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/cabin-corner.fbx
+CabinWallRoof_Visual: triangles=84 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/cabin-wall-roof.fbx
+CabinRoofSnow_Visual: triangles=116 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/cabin-roof-snow.fbx
+CabinRoofChimney_Visual: triangles=116 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/cabin-roof-chimney.fbx
+CabinDoorway_Visual: triangles=200 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/cabin-doorway.fbx
+CabinDoor_Visual: triangles=252 renderers=2 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/cabin-door-rotate.fbx
+CabinWindow_Visual: triangles=194 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/cabin-window-large.fbx
+Wreath_Visual: triangles=288 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/wreath.fbx
+Lantern_Visual: triangles=172 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/lantern.fbx
+ColoredLights_Visual: triangles=760 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/lights-colored.fbx
+SnowTree_Visual: triangles=810 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyHolidayKit/tree-decorated-snow.fbx
+Table_Visual: triangles=120 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyFurnitureKit/table.fbx
+Bench_Visual: triangles=170 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyFurnitureKit/bench.fbx
+ChairRounded_Visual: triangles=280 renderers=1 materials=1 source=Assets/Game/Art/CabinKit/Sources/KenneyFurnitureKit/chairRounded.fbx
+KitchenCabinet_Visual: triangles=114 renderers=2 materials=3 source=Assets/Game/Art/CabinKit/Sources/KenneyFurnitureKit/kitchenCabinet.fbx
+TableLamp_Visual: triangles=60 renderers=1 materials=2 source=Assets/Game/Art/CabinKit/Sources/KenneyFurnitureKit/lampSquareTable.fbx
+Rug_Visual: triangles=28 renderers=1 materials=2 source=Assets/Game/Art/CabinKit/Sources/KenneyFurnitureKit/rugRectangle.fbx
+Books_Visual: triangles=62 renderers=1 materials=4 source=Assets/Game/Art/CabinKit/Sources/KenneyFurnitureKit/books.fbx
+Fireplace_Visual: triangles=2584 renderers=15 materials=5 source=authored
+Workbench_Visual: triangles=192 renderers=16 materials=3 source=authored
+TOTAL: triangles=6920 renderers=54 uniqueMaterials=28 uniqueTextures=1
