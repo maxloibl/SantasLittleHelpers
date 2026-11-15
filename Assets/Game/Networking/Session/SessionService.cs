@@ -272,9 +272,8 @@ namespace SantasLittleHelpers.Networking.Session
                 return;
             }
 
-            int connected = manager != null ? manager.ConnectedClientsList.Count : 0;
-            int reserved = approvalReservations.Count;
-            if (connected + reserved >= options.MaxPlayers)
+            // Keep one entry per approved guest from approval through disconnect.
+            if (!approvalReservations.ContainsKey(request.ClientNetworkId) && 1 + approvalReservations.Count >= options.MaxPlayers)
             {
                 response.Reason = SessionError.SessionFull.ToString();
                 Reject(request.ClientNetworkId, SessionError.SessionFull);
@@ -288,7 +287,6 @@ namespace SantasLittleHelpers.Networking.Session
 
         private void OnClientConnected(ulong clientId)
         {
-            approvalReservations.Remove(clientId);
             if (manager == null) return;
 
             if (!isHost && manager.IsClient && clientId == manager.LocalClientId)
@@ -439,7 +437,7 @@ namespace SantasLittleHelpers.Networking.Session
         {
             if (options == null || approvalReservations.Count == 0) return;
             DateTime cutoff = DateTime.UtcNow - options.ApprovalReservationTimeout;
-            foreach (ulong id in approvalReservations.Where(pair => pair.Value <= cutoff).Select(pair => pair.Key).ToArray())
+            foreach (ulong id in approvalReservations.Where(pair => pair.Value <= cutoff && !manager.ConnectedClients.ContainsKey(pair.Key)).Select(pair => pair.Key).ToArray())
             {
                 approvalReservations.Remove(id);
                 Debug.Log($"SESSION_APPROVAL_RESERVATION_EXPIRED clientId={id}");
