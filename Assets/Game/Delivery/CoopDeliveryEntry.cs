@@ -291,6 +291,17 @@ namespace SantasLittleHelpers.Delivery
             if (!passed) Application.Quit(1);
         }
 
+        /// <summary>Runs the existing real-rule completion smoke after a product Home launch.</summary>
+        public void RunProductSoloCompletionSmoke()
+        {
+            if (soloRound == null || !soloRound.enabled || soloPlayer == null)
+            {
+                Debug.Log("PRODUCT_SMOKE_ERROR reason=SoloMissionNotReady");
+                return;
+            }
+            StartCoroutine(RunSoloSmoke());
+        }
+
         private void StartNetwork(bool host)
         {
             if (NetworkManager.Singleton != null && NetworkManager.Singleton != manager)

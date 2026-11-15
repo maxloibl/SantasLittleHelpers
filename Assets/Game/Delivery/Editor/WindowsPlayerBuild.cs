@@ -11,6 +11,7 @@ namespace SantasLittleHelpers.Editor
     {
         private static readonly string[] Scenes =
         {
+            "Assets/Game/Home/Scenes/Home.unity",
             "Assets/Game/Scenes/DeliveryHouse.unity",
             "Assets/Game/Scenes/MovementSandbox.unity"
         };
