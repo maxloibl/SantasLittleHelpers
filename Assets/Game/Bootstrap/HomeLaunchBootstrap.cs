@@ -50,13 +50,13 @@ namespace SantasLittleHelpers.Bootstrap
         {
             if (instance != null && instance != this) { Destroy(gameObject); return; }
             instance = this;
-            string profile = GetArgumentValue("--profile=");
+            bool productSmoke = TryGetArgumentValue("--product-smoke=", out _);
+            string profile = productSmoke ? GetArgumentValue("--profile=") : string.Empty;
             slotStore = new SaveSlotStore(string.IsNullOrWhiteSpace(profile) ? null : Path.GetFullPath(profile));
             SceneManager.sceneLoaded += OnSceneLoaded;
             sessions.Changed += OnSessionChanged;
             // Keep the old MVP path available only through an explicit opt-in.
             string[] args = Environment.GetCommandLineArgs();
-            bool productSmoke = Array.Exists(args, arg => arg.StartsWith("--product-smoke=", StringComparison.Ordinal));
             bool explicitLegacy = Array.Exists(args, arg => arg == "--legacy-start");
             bool legacyCli = Array.Exists(args, arg => arg == "--host" || arg == "--client" || arg == "--solo-smoke");
             if (explicitLegacy || (!Application.isEditor && !productSmoke && legacyCli))
@@ -260,6 +260,13 @@ namespace SantasLittleHelpers.Bootstrap
             productRole = host ? "Host" : guest ? "Guest" : "Solo";
             int port = 7777;
             if (int.TryParse(GetArgumentValue("--port="), out int parsedPort)) port = parsedPort;
+            if (productSmokeCase == "read-slot")
+            {
+                if (!Guid.TryParse(GetArgumentValue("--slot="), out Guid savedSlot)) return;
+                SlotResult<SaveSlot> stored = await slotStore.LoadSlot(new SlotId(savedSlot), CancellationToken.None);
+                Debug.Log($"SAVE_RELOAD slotId={savedSlot:D} result={(stored.IsSuccess ? "Loaded" : "Failed")} commits={(stored.IsSuccess ? stored.Value.CommitLedger.Count : 0)}");
+                return;
+            }
             Guid slotId = Guid.Empty;
             if (!guest)
             {
