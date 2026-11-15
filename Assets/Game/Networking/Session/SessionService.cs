@@ -350,7 +350,21 @@ namespace SantasLittleHelpers.Networking.Session
         private void Reject(ulong clientId, SessionError reason)
         {
             Raise(SessionEventKind.JoinRejected, clientId);
-            Debug.Log($"SESSION_JOIN_REJECT clientId={clientId} reason={reason}");
+            // The product regression parser consumes one contract marker with a reason field.
+            // Client IDs remain available through the typed JoinRejected event.
+            Debug.Log($"SESSION_JOIN_REJECT reason={MapJoinRejection(reason)}");
+        }
+
+        private static string MapJoinRejection(SessionError reason)
+        {
+            switch (reason)
+            {
+                case SessionError.SessionFull: return "SessionFull";
+                case SessionError.SessionClosed: return "SessionClosed";
+                case SessionError.InvalidEndpoint: return "InvalidEndpoint";
+                case SessionError.ConnectionTimeout: return "SessionNotFound";
+                default: return reason.ToString();
+            }
         }
 
         private async Task<SessionResult> FailStartAsync(SessionStatus terminalStatus, SessionError error, string message)

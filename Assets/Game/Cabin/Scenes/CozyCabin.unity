@@ -5399,7 +5399,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
   m_UsePipelineSettings: 1
   m_AdditionalLightsShadowResolutionTier: 2
@@ -5883,6 +5883,9 @@ GameObject:
   m_Component:
   - component: {fileID: 837449377}
   - component: {fileID: 837449378}
+  - component: {fileID: 837449379}
+  - component: {fileID: 837449381}
+  - component: {fileID: 837449380}
   m_Layer: 0
   m_Name: CabinIntegration
   m_TagString: Untagged
@@ -5918,7 +5921,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: df1a89531e49a6c4cb770421062b6099, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Cabin.CabinAnchors
   playerSpawnAnchors:
   - {fileID: 1587472544}
@@ -5929,6 +5932,65 @@ MonoBehaviour:
   departureDirection: {fileID: 1386358475}
   promptAnchor: {fileID: 324437590}
   promptTrigger: {fileID: 1916639837}
+--- !u!114 &837449379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 837449376}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 57972384
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  m_InScenePlacedDisabledByDefault: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  m_InScenePlaced: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &837449380
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 837449376}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06a37b5688eb3144fa137852b1a9eef8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Cabin.CabinNetworkPrefabCatalog
+  playerPrefab: {fileID: 2019140782156739129, guid: c9aedcde89e6aa942a6f1b8f8245835f, type: 3}
+  networkPrefabs:
+  - {fileID: 743093224846592033, guid: 0697914e4e6ef1241a564312f98b91e3, type: 3}
+  - {fileID: 2133170937079267067, guid: f773fdeecd811824595429c7ae88a559, type: 3}
+  - {fileID: 2752817843360963220, guid: 6649e145ee6f83043ac563e9be605039, type: 3}
+  - {fileID: 8190095184459434107, guid: c930cbfc27dd7864fad6ed7c65c08955, type: 3}
+--- !u!114 &837449381
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 837449376}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c7f44b5bd81cb74e990abd83bfd6faf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Cabin.CabinPhaseController
+  ShowTopMostFoldoutHeaderGroup: 1
+  anchors: {fileID: 837449378}
 --- !u!1 &847393434
 GameObject:
   m_ObjectHideFlags: 0
@@ -8174,7 +8236,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1260769630751915984, guid: cdeabf786c7ba0e4a8a5d993deec2ca9, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
-      value:
+      value: 
       objectReference: {fileID: 2100000, guid: 2b6e4529888c193428e3252245cb4f0c, type: 2}
     - target: {fileID: 1902867767305139689, guid: cdeabf786c7ba0e4a8a5d993deec2ca9, type: 3}
       propertyPath: m_LocalScale.x
@@ -12253,11 +12315,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 641460788271355198, guid: 477e03a16ac21e04ea18f2004605324d, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
-      value:
+      value: 
       objectReference: {fileID: 2100000, guid: 79e94127e1f6eb54197b7efdc63212e5, type: 2}
     - target: {fileID: 641460788271355198, guid: 477e03a16ac21e04ea18f2004605324d, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
-      value:
+      value: 
       objectReference: {fileID: 2100000, guid: 79e94127e1f6eb54197b7efdc63212e5, type: 2}
     - target: {fileID: 2593232614849022624, guid: 477e03a16ac21e04ea18f2004605324d, type: 3}
       propertyPath: m_Name

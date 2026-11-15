@@ -1,309 +1,643 @@
-using System.Collections;
 using System;
+using System.Collections;
+using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using SantasLittleHelpers.Cabin;
 using SantasLittleHelpers.Delivery;
 using SantasLittleHelpers.Home;
+using SantasLittleHelpers.Networking;
 using SantasLittleHelpers.Networking.Session;
 using SantasLittleHelpers.Savegames;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace SantasLittleHelpers.Bootstrap
 {
-    /// <summary>Connects the shipping Home menu to the existing DeliveryHouse mission.</summary>
     public sealed class HomeLaunchBootstrap : MonoBehaviour
     {
         private const string HomeScene = "Home";
+
         private const string MissionScene = "DeliveryHouse";
+
+        private const string CabinScene = "CozyCabin";
+
         private static HomeLaunchBootstrap instance;
+
         private readonly SessionService sessions = new SessionService();
+
         private CancellationTokenSource launchCancellation;
+
         private SaveSlotStore slotStore;
+
         private Guid activeSlot;
+
         private bool activeHostOrSolo;
+
         private bool returning;
+
         private HomeLaunchKind pendingKind;
+
         private Guid pendingRoundId;
+
         private IPAddress pendingAddress;
+
         private int pendingPort;
+
         private bool productLaunch;
+
         private MissionCommit pendingCommit;
+
         private bool hasPendingCommit;
+
         private string pendingNotice;
+
         private bool productSmokeStarted;
+        private bool productSmokeFinished;
+
         private string productSmokeCase;
+
         private string productRole = "Solo";
+
+        private CabinPhaseController cabin;
+
+        private CabinNetworkPrefabCatalog prefabCatalog;
+
+        private CoopDeliveryEntry mission;
+
+        private bool startRequested;
+
+        private bool missionStartAuthorized;
+
+        private GameObject soloPlayer;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Create()
         {
-            if (instance != null) return;
-            var root = new GameObject("Home Launch Bootstrap");
-            instance = root.AddComponent<HomeLaunchBootstrap>();
-            DontDestroyOnLoad(root);
+            if (!(instance != null))
+            {
+                GameObject obj = new GameObject("Home Launch Bootstrap");
+                instance = obj.AddComponent<HomeLaunchBootstrap>();
+                UnityEngine.Object.DontDestroyOnLoad(obj);
+            }
         }
 
         private void Awake()
         {
-            if (instance != null && instance != this) { Destroy(gameObject); return; }
+            if (instance != null && instance != this)
+            {
+                UnityEngine.Object.Destroy(base.gameObject);
+                return;
+            }
             instance = this;
-            bool productSmoke = TryGetArgumentValue("--product-smoke=", out _);
-            string profile = productSmoke ? GetArgumentValue("--profile=") : string.Empty;
-            slotStore = new SaveSlotStore(string.IsNullOrWhiteSpace(profile) ? null : Path.GetFullPath(profile));
+            string value;
+            bool flag = TryGetArgumentValue("--product-smoke=", out value);
+            string text = (flag ? GetArgumentValue("--profile=") : string.Empty);
+            slotStore = new SaveSlotStore(string.IsNullOrWhiteSpace(text) ? null : Path.GetFullPath(text));
             SceneManager.sceneLoaded += OnSceneLoaded;
             sessions.Changed += OnSessionChanged;
-            // Keep the old MVP path available only through an explicit opt-in.
-            string[] args = Environment.GetCommandLineArgs();
-            bool explicitLegacy = Array.Exists(args, arg => arg == "--legacy-start");
-            bool legacyCli = Array.Exists(args, arg => arg == "--host" || arg == "--client" || arg == "--solo-smoke");
-            if (explicitLegacy || (!Application.isEditor && !productSmoke && legacyCli))
-                SceneManager.LoadScene(MissionScene, LoadSceneMode.Single);
+            sessions.SceneEventReceived += OnNetworkSceneEvent;
+            string[] commandLineArgs = Environment.GetCommandLineArgs();
+            bool flag2 = Array.Exists(commandLineArgs, (string arg) => arg == "--legacy-start");
+            bool flag3 = Array.Exists(commandLineArgs, (string arg) => arg == "--host" || arg == "--client" || arg == "--solo-smoke");
+            if (flag2 || (!Application.isEditor && !flag && flag3))
+            {
+                SceneManager.LoadScene("DeliveryHouse", LoadSceneMode.Single);
+            }
         }
 
         private void OnDestroy()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
             sessions.Changed -= OnSessionChanged;
-            if (instance == this) instance = null;
+            sessions.SceneEventReceived -= OnNetworkSceneEvent;
+            if (instance == this)
+            {
+                instance = null;
+            }
+        }
+
+        private void Update()
+        {
+            if (productLaunch && !returning && pendingKind == HomeLaunchKind.Join && !(sessions.ActiveManager == null) && !sessions.ActiveManager.IsServer)
+            {
+                CoopNetworkRound coopNetworkRound = UnityEngine.Object.FindAnyObjectByType<CoopNetworkRound>();
+                if (coopNetworkRound != null && coopNetworkRound.IsTerminal)
+                {
+                    ReturnHome("Die Mission wurde abgeschlossen.");
+                }
+            }
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            if (scene.name == HomeScene)
+            if (scene.name == "Home")
             {
-                HomeMenuController controller = FindAnyObjectByType<HomeMenuController>();
-                if (controller != null) { controller.SetStore(slotStore); controller.Launch = LaunchAsync; }
+                HomeMenuController homeMenuController = UnityEngine.Object.FindAnyObjectByType<HomeMenuController>();
+                if (homeMenuController != null)
+                {
+                    homeMenuController.SetStore(slotStore);
+                    homeMenuController.Launch = LaunchAsync;
+                }
                 returning = false;
                 if (!productSmokeStarted && TryGetArgumentValue("--product-smoke=", out productSmokeCase))
-                    _ = StartProductSmokeAsync(controller);
-                if (hasPendingCommit) _ = RetryPendingCommitAsync();
+                {
+                    StartProductSmokeAsync(homeMenuController);
+                }
+                if (hasPendingCommit)
+                {
+                    RetryPendingCommitAsync();
+                }
                 else if (!string.IsNullOrEmpty(pendingNotice))
                 {
-                    FindAnyObjectByType<HomeMenuController>()?.Show(pendingNotice);
+                    UnityEngine.Object.FindAnyObjectByType<HomeMenuController>()?.Show(pendingNotice);
                     pendingNotice = null;
                 }
                 return;
             }
-            if (scene.name == MissionScene && productLaunch) StartCoroutine(StartMissionAfterSceneStartup());
+            if (scene.name == "DeliveryHouse" && mode == LoadSceneMode.Single && productLaunch && (pendingKind == HomeLaunchKind.Host || pendingKind == HomeLaunchKind.Join))
+            {
+                mission = UnityEngine.Object.FindAnyObjectByType<CoopDeliveryEntry>();
+                if (mission != null)
+                {
+                    mission.Completed -= OnMissionCompleted;
+                    mission.Completed += OnMissionCompleted;
+                    mission.PrepareClientWorld();
+                }
+            }
+            if (scene.name == "DeliveryHouse" && mode == LoadSceneMode.Single && productLaunch && pendingKind == HomeLaunchKind.Solo)
+            {
+                StartCoroutine(StartSoloAfterSceneStartup());
+            }
         }
 
-        private IEnumerator StartMissionAfterSceneStartup()
+        private IEnumerator StartSoloAfterSceneStartup()
         {
             yield return null;
-            if (!productLaunch || returning) yield break;
-            CoopDeliveryEntry mission = FindAnyObjectByType<CoopDeliveryEntry>();
-            if (mission == null) { ReturnHome("Die Mission konnte nicht geladen werden."); yield break; }
+            if (!productLaunch || returning)
+            {
+                yield break;
+            }
+            mission = UnityEngine.Object.FindAnyObjectByType<CoopDeliveryEntry>();
+            if (mission == null)
+            {
+                ReturnHome("Die Mission konnte nicht geladen werden.");
+                yield break;
+            }
             mission.Completed += OnMissionCompleted;
             mission.PrepareClientWorld();
-            if (pendingKind == HomeLaunchKind.Solo)
+            activeHostOrSolo = true;
+            Debug.Log("PRODUCT_FLOW role=Solo state=Mission result=Started error=None");
+            if (!mission.BeginSoloRound(pendingRoundId))
             {
-                activeHostOrSolo = true;
-                if (!mission.BeginSoloRound(pendingRoundId)) ReturnHome("Die Solo-Mission konnte nicht gestartet werden.");
-                else if (productSmokeCase == "solo-transition") mission.RunProductSoloCompletionSmoke();
+                ReturnHome("Die Solo-Mission konnte nicht gestartet werden.");
             }
-            else if (pendingKind == HomeLaunchKind.Host || pendingKind == HomeLaunchKind.Join)
-                _ = StartNetworkAsync(mission, pendingKind, pendingAddress, pendingPort);
+            else if (productSmokeCase == "solo-transition" || productSmokeCase == "save-roundtrip")
+            {
+                mission.RunProductSoloCompletionSmoke();
+            }
         }
 
         private async Task<HomeLaunchResult> LaunchAsync(HomeLaunchRequest request)
         {
             if (request == null || sessions.IsActive || launchCancellation != null)
+            {
                 return HomeLaunchResult.Failure(HomeLaunchErrorCode.Busy, "Ein Start läuft bereits.");
-            activeSlot = request.SlotId.HasValue ? request.SlotId.Value : Guid.Empty;
+            }
+            if (request.Kind != HomeLaunchKind.Join)
+            {
+                if (!request.SlotId.HasValue)
+                {
+                    return HomeLaunchResult.Failure(HomeLaunchErrorCode.InvalidSlot, "Bitte zuerst einen Spielstand auswählen.");
+                }
+                SlotResult<SaveSlot> slotResult = await slotStore.LoadSlot(new SlotId(request.SlotId.Value), CancellationToken.None);
+                if (slotResult.IsFailure)
+                {
+                    return HomeLaunchResult.Failure(HomeLaunchErrorCode.InvalidSlot, slotResult.ErrorMessage);
+                }
+            }
+            productRole = request.Kind == HomeLaunchKind.Host ? "Host" : request.Kind == HomeLaunchKind.Join ? "Guest" : "Solo";
+            missionStartAuthorized = false;
+            activeSlot = request.SlotId ?? Guid.Empty;
             productLaunch = true;
             pendingKind = request.Kind;
             pendingRoundId = Guid.NewGuid();
             pendingPort = request.Port;
             if (request.Kind == HomeLaunchKind.Join)
             {
-                if (!IPAddress.TryParse(request.EndpointText, out pendingAddress) ||
-                    pendingAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+                if (!IPAddress.TryParse(request.EndpointText, out pendingAddress) || pendingAddress.AddressFamily != AddressFamily.InterNetwork)
+                {
                     return HomeLaunchResult.Failure(HomeLaunchErrorCode.InvalidEndpoint, "Bitte eine gültige IPv4-Adresse eingeben.");
+                }
             }
-            else pendingAddress = IPAddress.Any;
-
+            else
+            {
+                pendingAddress = IPAddress.Any;
+            }
             launchCancellation = new CancellationTokenSource();
             try
             {
-                AsyncOperation operation = SceneManager.LoadSceneAsync(MissionScene, LoadSceneMode.Single);
-                if (operation == null)
+                if (!(await LoadSceneAsync("CozyCabin", LoadSceneMode.Single, launchCancellation.Token)))
                 {
-                    launchCancellation.Dispose(); launchCancellation = null;
-                    return HomeLaunchResult.Failure(HomeLaunchErrorCode.LaunchFailed, "Die Missionsszene konnte nicht geöffnet werden.");
+                    return FailLaunch("Die Hüttenszene konnte nicht geöffnet werden.");
                 }
-                while (!operation.isDone) await Task.Yield();
+                SceneManager.SetActiveScene(SceneManager.GetSceneByName("CozyCabin"));
+                cabin = UnityEngine.Object.FindAnyObjectByType<CabinPhaseController>();
+                prefabCatalog = UnityEngine.Object.FindAnyObjectByType<CabinNetworkPrefabCatalog>();
+                if (cabin == null || prefabCatalog == null)
+                {
+                    return FailLaunch("Hüttenszene oder Netzwerk-Prefabs fehlen.");
+                }
+                Debug.Log("PRODUCT_FLOW role=" + productRole + " state=Hut result=Started error=None");
+                if (request.Kind == HomeLaunchKind.Solo)
+                {
+                    soloPlayer = UnityEngine.Object.Instantiate(prefabCatalog.PlayerPrefab);
+                    if (soloPlayer == null || !cabin.TryPlaceSoloPlayer(soloPlayer.transform))
+                    {
+                        return FailLaunch("Der lokale Spieler konnte nicht in der Hütte platziert werden.");
+                    }
+                    NetworkObject component = soloPlayer.GetComponent<NetworkObject>();
+                    if (component != null)
+                    {
+                        component.enabled = false;
+                    }
+                    OwnerNetworkTransform component2 = soloPlayer.GetComponent<OwnerNetworkTransform>();
+                    if (component2 != null)
+                    {
+                        component2.enabled = false;
+                    }
+                    DeliveryPlayerOwnership component3 = soloPlayer.GetComponent<DeliveryPlayerOwnership>();
+                    if (component3 != null)
+                    {
+                        component3.ActivateLocalSoloView();
+                    }
+                }
+                else
+                {
+                    await StartNetworkAsync(prefabCatalog, request.Kind, pendingAddress, pendingPort);
+                    if (!productLaunch || returning)
+                    {
+                        return HomeLaunchResult.Failure(HomeLaunchErrorCode.LaunchFailed, "Der Sitzungsstart ist fehlgeschlagen.");
+                    }
+                }
                 return HomeLaunchResult.Success();
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                launchCancellation.Dispose(); launchCancellation = null;
-                return HomeLaunchResult.Failure(HomeLaunchErrorCode.LaunchFailed, exception.Message);
+                return FailLaunch(ex.Message);
             }
         }
 
-        private async Task StartNetworkAsync(CoopDeliveryEntry mission, HomeLaunchKind kind, IPAddress address, int port)
+        private HomeLaunchResult FailLaunch(string message)
         {
-            var options = new SessionOptions { ConfigureNetworkManager = manager =>
+            if (launchCancellation != null)
             {
-                if (!mission.ConfigureNetworkManager(manager))
-                    throw new InvalidOperationException("Die Missions-Netzwerkobjekte konnten nicht eingerichtet werden.");
-            } };
-            SessionResult result = kind == HomeLaunchKind.Host
-                ? await sessions.StartHostAsync(new IPEndPoint(address, port), options, launchCancellation?.Token ?? CancellationToken.None)
-                : await sessions.JoinAsync(new IPEndPoint(address, port), options, launchCancellation?.Token ?? CancellationToken.None);
+                launchCancellation.Dispose();
+                launchCancellation = null;
+            }
+            productLaunch = false;
+            returning = false;
+            SceneManager.LoadScene("Home", LoadSceneMode.Single);
+            return HomeLaunchResult.Failure(HomeLaunchErrorCode.LaunchFailed, message);
+        }
+
+        private static async Task<bool> LoadSceneAsync(string sceneName, LoadSceneMode mode, CancellationToken token)
+        {
+            AsyncOperation operation = SceneManager.LoadSceneAsync(sceneName, mode);
+            if (operation == null)
+            {
+                return false;
+            }
+            while (!operation.isDone)
+            {
+                token.ThrowIfCancellationRequested();
+                await Task.Yield();
+            }
+            return true;
+        }
+
+        private async Task StartNetworkAsync(CabinNetworkPrefabCatalog catalog, HomeLaunchKind kind, IPAddress address, int port)
+        {
+            SessionOptions sessionOptions = new SessionOptions
+            {
+                ConfigureNetworkManager = delegate(NetworkManager manager)
+                {
+                    if (!catalog.ConfigureNetworkManager(manager))
+                    {
+                        throw new InvalidOperationException("Die Missions-Netzwerk-Prefabs konnten nicht eingerichtet werden.");
+                    }
+                }
+            };
+            cabin.ConfigureJoinGate(sessionOptions);
+            SessionResult sessionResult = ((kind != HomeLaunchKind.Host) ? (await sessions.JoinAsync(new IPEndPoint(address, port), sessionOptions, launchCancellation?.Token ?? CancellationToken.None)) : (await sessions.StartHostAsync(new IPEndPoint(address, port), sessionOptions, launchCancellation?.Token ?? CancellationToken.None)));
+            SessionResult result = sessionResult;
             if (!result.Success)
             {
                 await sessions.ShutdownAsync();
                 Debug.Log($"SESSION_LAUNCH role={productRole} result=Failed error={result.Error}");
-                ReturnHome(kind == HomeLaunchKind.Host ? "Hoststart fehlgeschlagen: " + result.Message : "Beitritt fehlgeschlagen: " + result.Message, result.Error.ToString());
+                ReturnHome((kind == HomeLaunchKind.Host) ? ("Hoststart fehlgeschlagen: " + result.Message) : ("Beitritt fehlgeschlagen: " + result.Message), result.Error.ToString());
                 return;
             }
-            Debug.Log($"SESSION_LAUNCH role={(kind == HomeLaunchKind.Host ? "Host" : "Guest")} result=Ready error=None");
-            Debug.Log($"PRODUCT_FLOW role={(kind == HomeLaunchKind.Host ? "Host" : "Guest")} state=Mission result=Started error=None");
+            Debug.Log("SESSION_LAUNCH role=" + ((kind == HomeLaunchKind.Host) ? "Host" : "Guest") + " result=Ready error=None");
+            Debug.Log("SESSION_STATE state=" + ((kind == HomeLaunchKind.Host) ? "Hosting" : "Joining") + " role=" + ((kind == HomeLaunchKind.Host) ? "Host" : "Guest"));
             activeHostOrSolo = kind == HomeLaunchKind.Host;
-            if (productSmokeStarted && float.TryParse(GetArgumentValue("--leave-after="), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float seconds) && seconds > 0)
-                StartCoroutine(LeaveAfter(seconds));
-            if (kind == HomeLaunchKind.Host && !mission.BeginServerRound(sessions.ActiveManager, pendingRoundId))
-                ReturnHome("Die Mission konnte nicht gestartet werden.");
+            if (productSmokeStarted && float.TryParse(GetArgumentValue("--leave-after="), NumberStyles.Float, CultureInfo.InvariantCulture, out var result2) && result2 > 0f)
+            {
+                StartCoroutine(LeaveAfter(result2));
+            }
+            if (productSmokeStarted && kind == HomeLaunchKind.Host && float.TryParse(GetArgumentValue("--auto-mission-after="), NumberStyles.Float, CultureInfo.InvariantCulture, out var result3) && result3 > 0f)
+            {
+                StartCoroutine(AutoStartMissionAfter(result3));
+            }
+        }
+
+        private IEnumerator AutoStartMissionAfter(float seconds)
+        {
+            yield return new WaitForSecondsRealtime(seconds);
+            int expectedPlayers = productSmokeCase == "four-transition" ? 4 : 2;
+            while (productLaunch && cabin != null &&
+                   (!cabin.CanStartMission || sessions.ActiveManager == null ||
+                    sessions.ActiveManager.ConnectedClientsList.Count < expectedPlayers))
+            {
+                yield return null;
+            }
+            StartMissionFromCabin();
+        }
+
+        private void StartMissionFromCabin()
+        {
+            if (!startRequested && !returning && !(cabin == null) && !(sessions.ActiveManager == null) && cabin.TryStartMission())
+            {
+                startRequested = true;
+                Debug.Log("SESSION_STATE state=PreparingMission role=Host");
+                if (sessions.ActiveManager.SceneManager.LoadScene("DeliveryHouse", LoadSceneMode.Single) != SceneEventProgressStatus.Started)
+                {
+                    ReturnHome("Die Missionsszene konnte nicht synchron geladen werden.", "SceneLoadFailed");
+                }
+            }
+        }
+
+        private async void StartSoloMission()
+        {
+            if (pendingKind != HomeLaunchKind.Solo || returning || startRequested ||
+                SceneManager.GetActiveScene().name != CabinScene) return;
+            startRequested = true;
+            if (!await LoadSceneAsync(MissionScene, LoadSceneMode.Single, CancellationToken.None))
+            {
+                ReturnHome("Die Missionsszene konnte nicht geöffnet werden.", "SceneLoadFailed");
+            }
+        }
+
+        private void OnNetworkSceneEvent(object sender, SessionSceneEventArgs args)
+        {
+            if (productLaunch && !returning && args != null && !(args.SceneName != "DeliveryHouse"))
+            {
+                if (args.EventType == SceneEventType.LoadComplete && sessions.ActiveManager != null && !sessions.ActiveManager.IsServer)
+                {
+                    Debug.Log("PRODUCT_FLOW role=" + productRole + " state=Mission result=Started error=None");
+                }
+                else if (args.EventType == SceneEventType.LoadEventCompleted && sessions.ActiveManager != null && sessions.ActiveManager.IsServer)
+                {
+                    StartCoroutine(StartNetworkMissionAfterSceneStartup());
+                }
+            }
+        }
+
+        private IEnumerator StartNetworkMissionAfterSceneStartup()
+        {
+            yield return null;
+            if (!productLaunch || returning || missionStartAuthorized || mission == null ||
+                sessions.ActiveManager == null || !sessions.ActiveManager.IsServer)
+            {
+                yield break;
+            }
+            foreach (NetworkClient connectedClients in sessions.ActiveManager.ConnectedClientsList)
+            {
+                Debug.Log($"SESSION_READY peerId={connectedClients.ClientId} scene=Mission roundId={pendingRoundId:D}");
+            }
+            missionStartAuthorized = true;
+            Debug.Log($"PRODUCT_FLOW role={productRole} state=Mission result=Started error=None");
+            if (!mission.BeginServerRound(sessions.ActiveManager, pendingRoundId))
+            {
+                ReturnHome("Die Mission konnte nicht gestartet werden.", "SceneLoadFailed");
+            }
         }
 
         private IEnumerator LeaveAfter(float seconds)
         {
             yield return new WaitForSecondsRealtime(seconds);
-            if (productLaunch) ReturnHome("Mission verlassen.");
+            if (productLaunch)
+            {
+                ReturnHome("Sitzung verlassen.", "Disconnected");
+            }
         }
 
         private async void OnMissionCompleted(MissionCompleted completed)
         {
-            if (!activeHostOrSolo || activeSlot == Guid.Empty) return;
-            SlotResult<Unit> saved = await slotStore.CommitMission(new MissionCommit(completed.RoundId,
-                new SlotId(activeSlot), completed.MissionId, completed.CompletedAtUtc, SaveSlotStore.CurrentSchemaVersion), CancellationToken.None);
-            if (saved.IsFailure)
+            if (activeHostOrSolo && !(activeSlot == Guid.Empty))
             {
-                pendingCommit = new MissionCommit(completed.RoundId, new SlotId(activeSlot), completed.MissionId,
-                    completed.CompletedAtUtc, SaveSlotStore.CurrentSchemaVersion);
-                hasPendingCommit = true;
-                pendingNotice = "Speichern fehlgeschlagen. Home versucht den Fortschritt erneut zu sichern. " + saved.ErrorMessage;
-                ReturnHome(pendingNotice);
-                return;
+                SlotResult<Unit> slotResult = await slotStore.CommitMission(new MissionCommit(completed.RoundId, new SlotId(activeSlot), completed.MissionId, completed.CompletedAtUtc, SaveSlotStore.CurrentSchemaVersion), CancellationToken.None);
+                if (slotResult.IsFailure)
+                {
+                    pendingCommit = new MissionCommit(completed.RoundId, new SlotId(activeSlot), completed.MissionId, completed.CompletedAtUtc, SaveSlotStore.CurrentSchemaVersion);
+                    hasPendingCommit = true;
+                    pendingNotice = "Speichern fehlgeschlagen. Home versucht den Fortschritt erneut zu sichern. " + slotResult.ErrorMessage;
+                    ReturnHome(pendingNotice);
+                }
+                else
+                {
+                    Debug.Log($"SAVE_COMMIT role={productRole} roundId={completed.RoundId:D} slotId={activeSlot:D} missionId={completed.MissionId} result=Committed reason=None");
+                    ReturnHome("Mission abgeschlossen und gespeichert.");
+                }
             }
-            Debug.Log($"SAVE_COMMIT role={productRole} roundId={completed.RoundId:D} slotId={activeSlot:D} missionId={completed.MissionId} result=Committed reason=None");
-            ReturnHome("Mission abgeschlossen und gespeichert.");
         }
 
         private async Task RetryPendingCommitAsync()
         {
-            MissionCommit retry = pendingCommit;
-            if (!hasPendingCommit) return;
-            SlotResult<Unit> result = await slotStore.CommitMission(retry, CancellationToken.None);
-            if (result.IsSuccess)
+            MissionCommit commit = pendingCommit;
+            if (hasPendingCommit)
             {
-                pendingCommit = default;
-                hasPendingCommit = false;
-                pendingNotice = "Mission abgeschlossen und gespeichert.";
-                FindAnyObjectByType<HomeMenuController>()?.Show(pendingNotice);
-                pendingNotice = null;
-            }
-            else
-            {
-                pendingNotice = "Speichern weiterhin nicht möglich. Bitte Speicherplatz prüfen und den Startbildschirm erneut öffnen. " + result.ErrorMessage;
-                FindAnyObjectByType<HomeMenuController>()?.Show(pendingNotice);
+                SlotResult<Unit> slotResult = await slotStore.CommitMission(commit, CancellationToken.None);
+                if (slotResult.IsSuccess)
+                {
+                    pendingCommit = default(MissionCommit);
+                    hasPendingCommit = false;
+                    pendingNotice = "Mission abgeschlossen und gespeichert.";
+                    UnityEngine.Object.FindAnyObjectByType<HomeMenuController>()?.Show(pendingNotice);
+                    pendingNotice = null;
+                }
+                else
+                {
+                    pendingNotice = "Speichern weiterhin nicht möglich. Bitte Speicherplatz prüfen und den Startbildschirm erneut öffnen. " + slotResult.ErrorMessage;
+                    UnityEngine.Object.FindAnyObjectByType<HomeMenuController>()?.Show(pendingNotice);
+                }
             }
         }
 
         private void OnSessionChanged(object sender, SessionEventArgs args)
         {
-            if (!productLaunch || returning || args == null) return;
-            if (args.Kind == SessionEventKind.HostLeft)
-                ReturnHome("Die Verbindung wurde beendet. Du bist wieder im Startbildschirm.");
+            if (productLaunch && !returning && args != null && args.Kind == SessionEventKind.HostLeft)
+            {
+                ReturnHome("Die Verbindung wurde beendet. Du bist wieder im Startbildschirm.", "HostLeft");
+            }
         }
 
         private void OnGUI()
         {
-            if (returning) return;
-            if (productLaunch && SceneManager.GetActiveScene().name == MissionScene &&
-                Cursor.lockState != CursorLockMode.Locked &&
-                GUI.Button(new Rect(16, Screen.height - 44, 180, 28), "Zurück zum Startbildschirm"))
-                ReturnHome("Mission verlassen.");
-            else if (hasPendingCommit && SceneManager.GetActiveScene().name == HomeScene &&
-                GUI.Button(new Rect(16, Screen.height - 44, 200, 28), "Speichern erneut versuchen"))
-                _ = RetryPendingCommitAsync();
+            if (!returning)
+            {
+                if (productLaunch && SceneManager.GetActiveScene().name == "CozyCabin" && cabin != null && cabin.CanStartMission && GUI.Button(new Rect(16f, Screen.height - 44, 200f, 28f), "Mission starten"))
+                {
+                    StartMissionFromCabin();
+                }
+                else if (productLaunch && pendingKind == HomeLaunchKind.Solo && SceneManager.GetActiveScene().name == "CozyCabin" && GUI.Button(new Rect(16f, Screen.height - 44, 200f, 28f), "Mission starten"))
+                {
+                    StartSoloMission();
+                }
+                else if (productLaunch && SceneManager.GetActiveScene().name == "CozyCabin" && GUI.Button(new Rect(16f, Screen.height - 44, 180f, 28f), "Zurück zum Startbildschirm"))
+                {
+                    ReturnHome("Sitzung verlassen.");
+                }
+                else if (productLaunch && SceneManager.GetActiveScene().name == "DeliveryHouse" && Cursor.lockState != CursorLockMode.Locked && GUI.Button(new Rect(16f, Screen.height - 44, 180f, 28f), "Zurück zum Startbildschirm"))
+                {
+                    ReturnHome("Mission verlassen.");
+                }
+                else if (hasPendingCommit && SceneManager.GetActiveScene().name == "Home" && GUI.Button(new Rect(16f, Screen.height - 44, 200f, 28f), "Speichern erneut versuchen"))
+                {
+                    RetryPendingCommitAsync();
+                }
+            }
         }
 
         private async void ReturnHome(string notice, string error = "None")
         {
-            if (returning) return;
-            returning = true;
-            if (!hasPendingCommit) pendingNotice = notice;
-            if (launchCancellation != null) { launchCancellation.Dispose(); launchCancellation = null; }
-            if (sessions.IsActive) await sessions.ShutdownAsync();
-            if (productSmokeStarted)
+            if (!returning)
             {
-                Debug.Log($"PRODUCT_FLOW role={productRole} state=Home result={(error == "None" ? "Completed" : "Failed")} error={error}");
-                Debug.Log("SESSION_SHUTDOWN result=Completed managerCount=0 reason=None");
+                returning = true;
+                if (!hasPendingCommit)
+                {
+                    pendingNotice = notice;
+                }
+                if (launchCancellation != null)
+                {
+                    launchCancellation.Dispose();
+                    launchCancellation = null;
+                }
+                if (sessions.IsActive)
+                {
+                    await sessions.ShutdownAsync();
+                }
+                cabin = null;
+                mission = null;
+                prefabCatalog = null;
+                startRequested = false;
+                activeHostOrSolo = false;
+                productLaunch = false;
+                await LoadSceneAsync(HomeScene, LoadSceneMode.Single, CancellationToken.None);
+                if (productSmokeStarted && !productSmokeFinished)
+                {
+                    productSmokeFinished = true;
+                    Debug.Log("PRODUCT_FLOW role=" + productRole + " state=Home result=" + ((error == "None") ? "Completed" : "Failed") + " error=" + error);
+                    int managers = UnityEngine.Object.FindObjectsByType<NetworkManager>(FindObjectsInactive.Include,
+                        FindObjectsSortMode.None).Length;
+                    Debug.Log(managers == 0
+                        ? "SESSION_SHUTDOWN result=Completed managerCount=0 reason=None"
+                        : "SESSION_SHUTDOWN result=Failed managerCount=1 reason=Disconnected");
+                    Application.Quit();
+                }
             }
-            SceneManager.LoadScene(HomeScene, LoadSceneMode.Single);
-            activeHostOrSolo = false;
-            productLaunch = false;
         }
 
         private async Task StartProductSmokeAsync(HomeMenuController controller)
         {
-            if (controller == null) return;
+            if (controller == null)
+            {
+                return;
+            }
             productSmokeStarted = true;
             Application.runInBackground = true;
-            bool host = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--host");
-            bool guest = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--client");
-            productRole = host ? "Host" : guest ? "Guest" : "Solo";
+            bool host = Array.Exists(Environment.GetCommandLineArgs(), (string arg) => arg == "--host");
+            bool guest = Array.Exists(Environment.GetCommandLineArgs(), (string arg) => arg == "--client");
+            productRole = (host ? "Host" : (guest ? "Guest" : "Solo"));
             int port = 7777;
-            if (int.TryParse(GetArgumentValue("--port="), out int parsedPort)) port = parsedPort;
+            if (int.TryParse(GetArgumentValue("--port="), out var result))
+            {
+                port = result;
+            }
             if (productSmokeCase == "read-slot")
             {
-                if (!Guid.TryParse(GetArgumentValue("--slot="), out Guid savedSlot)) return;
-                SlotResult<SaveSlot> stored = await slotStore.LoadSlot(new SlotId(savedSlot), CancellationToken.None);
-                Debug.Log($"SAVE_RELOAD slotId={savedSlot:D} result={(stored.IsSuccess ? "Loaded" : "Failed")} commits={(stored.IsSuccess ? stored.Value.CommitLedger.Count : 0)}");
+                if (Guid.TryParse(GetArgumentValue("--slot="), out var savedSlot))
+                {
+                    SlotResult<SaveSlot> slotResult = await slotStore.LoadSlot(new SlotId(savedSlot), CancellationToken.None);
+                    Debug.Log(string.Format("SAVE_RELOAD slotId={0:D} result={1} commits={2}", savedSlot, slotResult.IsSuccess ? "Loaded" : "Failed", slotResult.IsSuccess ? slotResult.Value.CommitLedger.Count : 0));
+                }
                 return;
             }
             Guid slotId = Guid.Empty;
             if (!guest)
             {
-                SlotResult<SaveSlot> slot = await slotStore.CreateSlot("Product Smoke", CancellationToken.None);
-                if (slot.IsFailure) { LogProductLaunchFailure(productRole, "StorageUnavailable"); return; }
-                slotId = slot.Value.SlotId.Value;
+                if (productSmokeCase == "save-roundtrip")
+                {
+                    SlotResult<System.Collections.Generic.IReadOnlyList<SaveSlotSummary>> existing =
+                        await slotStore.ListSlots(CancellationToken.None);
+                    if (existing.IsSuccess && existing.Value.Count > 0)
+                        slotId = existing.Value[0].SlotId.Value;
+                }
+                if (slotId == Guid.Empty)
+                {
+                    SlotResult<SaveSlot> created = await slotStore.CreateSlot("Product Smoke", CancellationToken.None);
+                    if (created.IsFailure)
+                    {
+                        LogProductLaunchFailure(productRole, "StorageUnavailable");
+                        return;
+                    }
+                    slotId = created.Value.SlotId.Value;
+                }
             }
-
-            HomeLaunchRequest request;
-            if (host) request = HomeLaunchRequest.Host(slotId, "0.0.0.0", port);
-            else if (guest) request = HomeLaunchRequest.Join(GetArgumentValue("--join="), port);
-            else request = HomeLaunchRequest.Solo(slotId);
-            HomeLaunchResult result = await controller.Launch(request);
-            if (result.IsFailure)
+            HomeLaunchRequest request = (host ? HomeLaunchRequest.Host(slotId, "0.0.0.0", port) : ((!guest) ? HomeLaunchRequest.Solo(slotId) : HomeLaunchRequest.Join(GetArgumentValue("--join="), port)));
+            HomeLaunchResult homeLaunchResult = await controller.Launch(request);
+            if (homeLaunchResult.IsFailure)
             {
-                string error = result.Error == HomeLaunchErrorCode.InvalidEndpoint ? "InvalidEndpoint" : "LaunchFailed";
-                LogProductLaunchFailure(productRole, error);
-                return;
+                string error = ((homeLaunchResult.Error == HomeLaunchErrorCode.InvalidEndpoint) ? "InvalidEndpoint" : "LaunchFailed");
+                if (!returning && !productSmokeFinished) LogProductLaunchFailure(productRole, error);
             }
-            if (request.Kind == HomeLaunchKind.Solo)
+            else if (request.Kind == HomeLaunchKind.Solo)
             {
                 Debug.Log("SESSION_LAUNCH role=Solo result=Ready error=None");
-                Debug.Log("PRODUCT_FLOW role=Solo state=Mission result=Started error=None");
+                if (productSmokeCase == "solo-transition" || productSmokeCase == "save-roundtrip")
+                {
+                    StartSoloMission();
+                }
             }
         }
 
         private void LogProductLaunchFailure(string role, string error)
         {
-            Debug.Log($"SESSION_LAUNCH role={role} result=Failed error={error}");
-            Debug.Log($"PRODUCT_FLOW role={role} state=Home result=Failed error={error}");
+            productSmokeFinished = true;
+            Debug.Log("SESSION_LAUNCH role=" + role + " result=Failed error=" + error);
+            if (error == "InvalidEndpoint")
+            {
+                Debug.Log("SESSION_JOIN_REJECT reason=InvalidEndpoint");
+            }
+            Debug.Log("PRODUCT_FLOW role=" + role + " state=Home result=Failed error=" + error);
             Debug.Log("SESSION_SHUTDOWN result=Completed managerCount=0 reason=None");
+            Application.Quit();
         }
 
         private static string GetArgumentValue(string prefix)
         {
-            foreach (string arg in Environment.GetCommandLineArgs())
-                if (arg.StartsWith(prefix, StringComparison.Ordinal)) return arg.Substring(prefix.Length);
+            string[] commandLineArgs = Environment.GetCommandLineArgs();
+            foreach (string text in commandLineArgs)
+            {
+                if (text.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    return text.Substring(prefix.Length);
+                }
+            }
             return string.Empty;
         }
 

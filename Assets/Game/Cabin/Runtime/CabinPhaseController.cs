@@ -20,6 +20,20 @@ namespace SantasLittleHelpers.Cabin
 
         public CabinPhase Phase => phase.Value;
         public bool IsAdmissionOpen => phase.Value == CabinPhase.Cabin;
+        public bool CanStartMission
+        {
+            get
+            {
+                if (!IsSpawned || !IsServer || phase.Value != CabinPhase.Cabin || NetworkManager == null) return false;
+                int guests = 0;
+                foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+                {
+                    if (!readyClients.Contains(client.ClientId)) return false;
+                    if (client.ClientId != NetworkManager.ServerClientId) guests++;
+                }
+                return guests > 0;
+            }
+        }
         public event Action<CabinPhase> PhaseChanged;
 
         /// <summary>Connect this session's join approval to the authoritative cabin phase before starting it.</summary>
@@ -209,5 +223,6 @@ namespace SantasLittleHelpers.Cabin
             PhaseChanged?.Invoke(current);
             Debug.Log($"CABIN_PHASE old={previous} new={current} localClient={NetworkManager.LocalClientId}");
         }
+
     }
 }

@@ -46,6 +46,7 @@ namespace SantasLittleHelpers.Delivery
         private bool smokeDeliveryPlaced;
         private bool smokeRestarted;
         private bool smokeFourPlayerResetStarted;
+        private bool productReturnStarted;
         private bool disconnectPreLogged;
         private bool quietDeliveryReported;
         private bool quietReturnReported;
@@ -110,6 +111,7 @@ namespace SantasLittleHelpers.Delivery
             delivered.Value = 0;
             phase.Value = 0;
             smokeStartedAt = Time.unscaledTime;
+            productReturnStarted = false;
             active.Value = true;
             SpawnMissionGifts();
             return true;
@@ -269,6 +271,7 @@ namespace SantasLittleHelpers.Delivery
 
         private void TickSmoke()
         {
+            if (TickProductTransitionSmoke()) return;
             if (System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-disconnect-smoke"))
             {
                 TickDisconnectSmoke();
@@ -342,6 +345,45 @@ namespace SantasLittleHelpers.Delivery
                 smokeRestarted = true;
                 Debug.Log($"COOP_SMOKE_RESTART_PASS phase={phase.Value} delivered={delivered.Value} players={NetworkManager.ConnectedClientsList.Count}");
             }
+        }
+
+        private bool TickProductTransitionSmoke()
+        {
+            string productCase = null;
+            foreach (string argument in System.Environment.GetCommandLineArgs())
+                if (argument.StartsWith("--product-smoke=", StringComparison.Ordinal))
+                    productCase = argument.Substring("--product-smoke=".Length);
+            if (!IsServer || (productCase != "duo-transition" && productCase != "four-transition" &&
+                              productCase != "no-client-write")) return false;
+
+            float elapsed = Time.unscaledTime - smokeStartedAt;
+            if (phase.Value == 0 && elapsed > 1f && lightGift != null && deliveryTrigger != null)
+            {
+                Vector3 center = deliveryTrigger.bounds.center;
+                Rigidbody body = lightGift.GetComponent<Rigidbody>();
+                if (body != null)
+                {
+                    body.linearVelocity = Vector3.zero;
+                    body.angularVelocity = Vector3.zero;
+                    body.position = center;
+                }
+                lightGift.transform.position = center;
+                Physics.SyncTransforms();
+                Debug.Log($"PRODUCT_SMOKE_ACTION case={productCase} action=DeliverGift position={center}");
+            }
+            else if (phase.Value == 1 && elapsed > 2f && sleigh != null && !productReturnStarted)
+            {
+                productReturnStarted = true;
+                foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+                {
+                    if (client.PlayerObject == null || !playerStartSlots.TryGetValue(client.ClientId, out int slot)) continue;
+                    Vector3 position = sleigh.position;
+                    position.y = .05f;
+                    SetPlayerPoseOwnerRpc(new NetworkObjectReference(client.PlayerObject), position, slot, true);
+                }
+                Debug.Log($"PRODUCT_SMOKE_ACTION case={productCase} action=ReturnPlayers players={NetworkManager.ConnectedClientsList.Count}");
+            }
+            return true;
         }
 
         private void TickDisconnectSmoke()

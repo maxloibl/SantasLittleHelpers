@@ -231,13 +231,13 @@ function Invoke-PlayerCase {
         'duo-transition' {
             $logPaths['host'] = Join-Path $CaseLogDir 'host.log'
             $logPaths['guest'] = Join-Path $CaseLogDir 'guest.log'
-            [void](Start-CaseProcess -CaseName $CaseName -Role 'host' -ProfileDir (& $profileFor 'host') -LogPath $logPaths['host'] -CasePort $CasePort)
+            [void](Start-CaseProcess -CaseName $CaseName -Role 'host' -ProfileDir (& $profileFor 'host') -LogPath $logPaths['host'] -CasePort $CasePort -Extras @('--auto-mission-after=2'))
             Start-Sleep -Seconds 2
             [void](Start-CaseProcess -CaseName $CaseName -Role 'guest' -ProfileDir (& $profileFor 'guest') -LogPath $logPaths['guest'] -CasePort $CasePort -Extras @('--join=127.0.0.1'))
         }
         'four-transition' {
             $logPaths['host'] = Join-Path $CaseLogDir 'host.log'
-            [void](Start-CaseProcess -CaseName $CaseName -Role 'host' -ProfileDir (& $profileFor 'host') -LogPath $logPaths['host'] -CasePort $CasePort)
+            [void](Start-CaseProcess -CaseName $CaseName -Role 'host' -ProfileDir (& $profileFor 'host') -LogPath $logPaths['host'] -CasePort $CasePort -Extras @('--auto-mission-after=2'))
             Start-Sleep -Seconds 2
             for ($index = 1; $index -le 3; $index++) {
                 $key = "guest$index"
@@ -255,7 +255,7 @@ function Invoke-PlayerCase {
             $before = Get-Content -LiteralPath $sentinelPath -Raw
             $logPaths['host'] = Join-Path $CaseLogDir 'host.log'
             $logPaths['guest'] = Join-Path $CaseLogDir 'guest.log'
-            [void](Start-CaseProcess -CaseName $CaseName -Role 'host' -ProfileDir $hostProfile -LogPath $logPaths['host'] -CasePort $CasePort)
+            [void](Start-CaseProcess -CaseName $CaseName -Role 'host' -ProfileDir $hostProfile -LogPath $logPaths['host'] -CasePort $CasePort -Extras @('--auto-mission-after=2'))
             Start-Sleep -Seconds 2
             [void](Start-CaseProcess -CaseName $CaseName -Role 'guest' -ProfileDir (& $profileFor 'guest') -LogPath $logPaths['guest'] -CasePort $CasePort -Extras @('--join=127.0.0.1'))
             $sentinelCheck = @{ Path = $sentinelPath; Before = $before }
