@@ -6,7 +6,7 @@
 2. Installiere über **Installs → Install Editor** genau die Version aus [ProjectVersion.txt](ProjectSettings/ProjectVersion.txt). Der aktuelle Stand verwendet **Unity 6000.6.8f1**. Auf diesem Rechner liegt der Editor unter `C:\6000.6.8f1`. [Unity-Releasearchiv](https://unity.com/releases/editor/whats-new/6000.6.8f1)
 3. Installiere in Unity Hub unter **Installs → Add modules** für diese Editorversion **Windows Build Support (Mono)**. Der eingecheckte Build-Einstieg erzeugt einen portablen Windows-x64-Mono-Player; IL2CPP und Visual Studio werden dafür nicht benötigt.
 4. Wähle in Hub **Projects → Add → Add project from disk** und dann den Ordner `SantasLittleHelpers`, der `Assets`, `Packages` und `ProjectSettings` enthält. Öffne das Projekt mit dem in Schritt 2 installierten Editor und lass den ersten Import fertiglaufen.
-5. Öffne im Project-Fenster `Assets/Game/Scenes/MovementSandbox.unity`. Drücke **Play** und klicke in die **Game**-Ansicht.
+5. Für den normalen Spielstart öffne `Assets/Game/Home/Scenes/Home.unity` oder starte den Windows-Build. Home bietet Solo, Host und IPv4-Join sowie die lokalen Spielstände. Die bisherige MVP-Szene bleibt über **Tools → Scenes → DeliveryHouse** im Editor und mit `--legacy-start` im Player direkt anwählbar.
 
 [Unity-LTS-Übersicht](https://unity.com/releases/unity-6/support) · [URP-Projektanlage](https://docs.unity3d.com/6000.6/Documentation/Manual/urp/creating-a-new-project-with-urp.html) · [Input-System-Installation](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.20/manual/Installation.html)
 
