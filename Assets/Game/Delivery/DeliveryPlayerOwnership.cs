@@ -16,5 +16,12 @@ namespace SantasLittleHelpers.Delivery
             foreach (AudioListener listener in GetComponentsInChildren<AudioListener>(true)) listener.enabled = local;
             Debug.Log($"MISSION_PLAYER owner={OwnerClientId} localView={local} position={transform.position}");
         }
+
+        public void ActivateLocalSoloView()
+        {
+            if (localView != null) localView.SetActive(true);
+            if (controller != null) controller.enabled = true;
+            foreach (AudioListener listener in GetComponentsInChildren<AudioListener>(true)) listener.enabled = true;
+        }
     }
 }

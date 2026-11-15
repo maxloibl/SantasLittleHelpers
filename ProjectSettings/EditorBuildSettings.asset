@@ -9,6 +9,9 @@ EditorBuildSettings:
     path: Assets/Game/Home/Scenes/Home.unity
     guid: 96c834ae6f591e1498e2aa033126af3d
   - enabled: 1
+    path: Assets/Game/Cabin/Scenes/CozyCabin.unity
+    guid: ec0a984d788d0264faf960554c2bbd47
+  - enabled: 1
     path: Assets/Game/Scenes/DeliveryHouse.unity
     guid: 05aa427be91793d418806bf7e535594d
   - enabled: 1
