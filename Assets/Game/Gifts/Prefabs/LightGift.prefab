@@ -38,7 +38,7 @@ Transform:
   m_LocalScale: {x: 0.55, y: 0.55, z: 0.55}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 4409288031248933450}
+  - {fileID: 87016491166153214}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &3012735199432199595
@@ -77,7 +77,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 743093224846592033}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -271,7 +271,7 @@ MonoBehaviour:
   heavyMass: 3
   soloHeavySpeed: 0.35
   twoPlayerHeavySpeed: 1
---- !u!1001 &7518204270879420354
+--- !u!1001 &3235392067282793808
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -279,57 +279,69 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2981994210322803532}
     m_Modifications:
-    - target: {fileID: 1589756973089235524, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
-      propertyPath: m_Name
-      value: Cranberry Gift Visual
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -0.5
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalPosition.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalRotation.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalRotation.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
+    - target: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8812012422071522648, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
+      propertyPath: m_Name
+      value: Cranberry Gift Visual
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
---- !u!4 &4409288031248933450 stripped
+  m_SourcePrefab: {fileID: 100100000, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
+--- !u!4 &87016491166153214 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 6153877425134423432, guid: d2d1a07bdc3ba784b8b57d7d0db86180, type: 3}
-  m_PrefabInstance: {fileID: 7518204270879420354}
+  m_CorrespondingSourceObject: {fileID: 3302069782509964462, guid: ed9f713721f2d3f4a89e9aac24224242, type: 3}
+  m_PrefabInstance: {fileID: 3235392067282793808}
   m_PrefabAsset: {fileID: 0}

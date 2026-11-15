@@ -111,6 +111,7 @@ GameObject:
   - component: {fileID: 7516549564523701133}
   - component: {fileID: 5997641742113946643}
   - component: {fileID: 8313582544573851070}
+  - component: {fileID: 3128896469707823781}
   m_Layer: 8
   m_Name: DeliveryNetworkPlayer
   m_TagString: Untagged
@@ -132,8 +133,8 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2059297404489834161}
-  - {fileID: 5671797551897453233}
   - {fileID: 8771915307165367938}
+  - {fileID: 3205805415862697474}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &4043869269794225580
@@ -171,7 +172,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
   GlobalObjectIdHash: 0
   InScenePlacedSourceGlobalObjectIdHash: 0
@@ -198,7 +199,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 749f80c9d8bf4e0b9e927ecb502ad260, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Networking.OwnerNetworkTransform
   ShowTopMostFoldoutHeaderGroup: 1
   NetworkTransformExpanded: 0
@@ -244,7 +245,7 @@ MonoBehaviour:
   m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 356775230b294b989d11b9baac6d314c, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.FirstPersonController
   viewPivot: {fileID: 8771915307165367938}
   ceilingLayers:
@@ -269,7 +270,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d49a7c40cb6f43448f5fb7556e4795e5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.GiftInteractor
   viewCamera: {fileID: 324945860369918414}
   reach: 2.5
@@ -287,7 +288,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b33663b76d5a47ec99ec11d49a44ca34, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Delivery.DeliveryPlayerOwnership
   ShowTopMostFoldoutHeaderGroup: 1
   localView: {fileID: 1062908071418261727}
@@ -302,7 +303,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 966662884d814edc9acff4fb771bee54, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Capture.CapturedPlayerState
   ShowTopMostFoldoutHeaderGroup: 1
 --- !u!114 &5997641742113946643
@@ -315,7 +316,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 93a358af9cc1479ca4e2764b5040bdc8, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Capture.CaptureRescueInput
   ShowTopMostFoldoutHeaderGroup: 1
   interactionRadius: 2
@@ -330,9 +331,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 62e9dc398b65c3a4f80cd9024f37f684, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Delivery.CoopSmokePlayerDriver
   ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &3128896469707823781
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2019140782156739129}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f9840305ed3ee5459164f0be1569015, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Delivery.DeliveryCharacterVisual
+  animator: {fileID: 1222476484841429831}
+  visualRoot: {fileID: 3205805415862697474}
+  animateJump: 1
 --- !u!1 &5893229647660377499
 GameObject:
   m_ObjectHideFlags: 0
@@ -454,7 +470,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8771915307165367938}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &6716408848907644540
+--- !u!1001 &9138767537990287250
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -462,59 +478,47 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 4966589839353973334}
     m_Modifications:
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalPosition.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalPosition.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalRotation.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalRotation.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7265205838999866370, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
+    - target: {fileID: 8579758095820938433, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
       propertyPath: m_Name
       value: Cozy Elf Visual
       objectReference: {fileID: 0}
@@ -522,9 +526,14 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
---- !u!4 &5671797551897453233 stripped
+  m_SourcePrefab: {fileID: 100100000, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
+--- !u!95 &1222476484841429831 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 7936599606332613845, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
+  m_PrefabInstance: {fileID: 9138767537990287250}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &3205805415862697474 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 1406037404894694605, guid: 2884ce5ab038d2e479e5a0b43e20f25e, type: 3}
-  m_PrefabInstance: {fileID: 6716408848907644540}
+  m_CorrespondingSourceObject: {fileID: 5957738537717383568, guid: 9e968ae57e67da64b97d0c6599349b11, type: 3}
+  m_PrefabInstance: {fileID: 9138767537990287250}
   m_PrefabAsset: {fileID: 0}
