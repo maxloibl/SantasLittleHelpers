@@ -1,5 +1,7 @@
 # Produktfluss-Regressionsmatrix (#50)
 
+Für konkrete Ergebnisse der integrierten Windows-Builds siehe [Sprintstand](delivery/STATUS.md). Die Matrix beschreibt die Testanforderungen für den nächsten Build.
+
 Diese Matrix prüft die in `docs/PRODUCT-CONTRACTS.md` (S5-A) festgelegten Marker und den MVP-Produktfluss. Sie ergänzt die bestehenden Koop-Skripte, ersetzt sie nicht: `scripts/run-coop-regressions.ps1`, `scripts/build-coop-regression-players.ps1` und die zugehörigen Logprüfungen bleiben unverändert nutzbar.
 
 Neue Runtime-Hooks gehören zu den jeweiligen Runtime-Issues. #50 liefert nur Skripte, Fixtures und diese Dokumentation.
@@ -120,6 +122,6 @@ Die bereits dokumentierten MVP-Regressionen bleiben über die vorhandenen Skript
 ## Status und Grenzen
 
 - Fixture-Abnahme: lokal mit Unity-unabhängigem PowerShell ausführbar und bestanden, sofern `PARSER_CHECKS=PASS` gemeldet wird.
-- Prozess-Smoke gegen einen echten Windows-Player: bis zum Vorliegen der Runtime-Hooks aus den jeweiligen Issues ungeprüft. S7-F führt den Harness am integrierten Build aus.
+- Prozess-Smoke gegen einen echten Windows-Player: Die Laufzeithooks sind integriert. Der [Sprintstand](delivery/STATUS.md) enthält die Ergebnisse nach Build. S7-F prüft die Matrix am finalen Windows-Build erneut.
 - Manuelle GUI-/LAN-Abnahme: immer ungeprüft, solange keine dokumentierte Evidenz vorliegt.
 - Keine Paket-, `ProjectSettings/`- oder Szenenänderung durch #50.

@@ -1,5 +1,9 @@
 # Santa's Little Helpers
 
+Ein kooperatives First-Person-Weihnachtsspiel für eine bis vier Personen. Im Windows-Player führt der Weg vom Startbildschirm über die Winterhütte zur Liefermission.
+
+[Projektdokumentation](docs/README.md) · [Produktspezifikation](docs/product/SPEC.md) · [Windows-Abnahme](docs/engineering/WORKFLOW.md) · [Sprintstand](docs/delivery/STATUS.md)
+
 ## 1. Unity unter Windows einrichten
 
 1. Öffne [Unity Hub](https://unity.com/download) und melde dich mit deinem Unity-Konto an. Aktiviere in Hub eine Lizenz, falls der Editor danach fragt.
@@ -22,13 +26,13 @@
 | Esc | Maus freigeben |
 | Linksklick im Game-Fenster | Maus wieder einfangen |
 
-## 3. Abnahme im Play Mode
+## 3. Bewegungsprüfung in MovementSandbox
 
 - **Laufen und Sprinten.** Richte die Kamera an der Startposition gerade auf die Wand aus. Zwischen den goldenen Markierungen liegen 8 m. Die Strecke dauert ungefähr 2 s gehend, 1,3 s sprintend und 4 s geduckt. W+D bewegt genauso schnell wie W allein. Wenn du die Taste loslässt, endet die horizontale Bewegung sofort.
 - **Wand und Sprung.** Halte W an der grünen Wand. Die Spielfigur bleibt vor der Wand stehen. Gehe zum 60 cm hohen Holzblock links und springe darauf. Halten der Leertaste löst nach der Landung keinen zweiten Sprung aus. Erneutes Drücken in der Luft löst keinen Doppelsprung aus.
 - **Niedriger Durchgang.** Versuche rechts, im Stehen unter das Dach zu laufen. Ducke dich und gehe hinein. Lasse Strg bzw. C unter dem Dach los. Die Kapsel und Kamera bleiben unten. Gehe weiter aus dem Durchgang. Die Figur richtet sich wieder auf. Sprinten und Springen sind geduckt gesperrt.
 - **Kamera und Fokus.** Drehe dich bei gedrücktem W. Die Laufrichtung folgt sofort der horizontalen Blickrichtung. Bewege die Maus senkrecht, bis der Blick an beiden Enden stoppt. Bei Stillstand bleibt die Kamera ruhig. Drücke Esc, bewege die Maus und drücke W. Die Figur bewegt sich erst nach erneutem Klick in die Game-Ansicht. Prüfe auch einen Fensterwechsel per Alt+Tab.
-- **Windows-Ziel.** Der Player startet in `DeliveryHouse`. Die globale Build-Szenenliste enthält zuerst `DeliveryHouse` und danach `MovementSandbox`; die Testszene bleibt im Editor direkt zum Spielen verfügbar. Für einen wiederholbaren Player-Build siehe Abschnitt 4.
+- **Windows-Ziel.** Der Player startet in `Home`. Die Build-Szenen sind `Home`, `CozyCabin`, `DeliveryHouse` und `MovementSandbox`. Die Bewegungs-Testszene bleibt im Editor direkt zum Spielen verfügbar.
 
 ## 4. Windows-Player bauen und starten
 
@@ -47,7 +51,7 @@ Der Befehl endet erfolgreich mit `WINDOWS_BUILD result=Succeeded`; das Log liegt
 & 'C:/tmp/slh13-windows/DeliveryHouse.exe'
 ```
 
-Im Menü **Play Solo** startet die Mission lokal. **Start Host** öffnet einen Host für bis zu drei Clients (vier Spieler insgesamt). Die Vier-Spieler-Abnahme lief mit vier lokalen Prozessen über localhost (`127.0.0.1`) und denselben ausgewählten UDP-Port. Ein LAN-Lauf zwischen verschiedenen Rechnern wurde nicht geprüft. Die Verbindung verwendet direkte IPv4 ohne Relay, NAT-Traversal oder IPv6; der Host bindet an alle Netzwerkschnittstellen.
+In Home einen Spielstand auswählen und **Solo starten** oder **Host starten · Lobby öffnen** wählen. Gäste verwenden **Beitreten** mit direkter IPv4 und UDP-Port. Solo und Host starten die Runde in der Hütte über **Mission starten**. Der Host braucht mindestens einen bereitstehenden Gast und kann bis zu drei Gäste aufnehmen. [Spielablauf und Produktgrenzen](docs/product/SPEC.md)
 
 Steuerung im Player: **W/A/S/D** laufen, **Maus** umsehen, **E** Geschenk aufnehmen/ablegen bzw. einen nahen Mitspieler befreien, **Shift** sprinten, **Strg/C** ducken, **Leertaste** springen. Bei Gefangennahme stoppt die Bewegung; zum Neustart nach einer abgeschlossenen Solo-Runde oder verlorenen Koop-Runde **R** drücken. **Esc** gibt den Mauszeiger frei; Klick ins Spielfenster fängt ihn wieder ein. Alt+Tab wechselt das Fenster.
 
@@ -67,7 +71,7 @@ Wähle **LocalPlayer** in der Hierarchy, um die Bewegungswerte im Inspector anzu
 
 Falls du die Szene in einem frisch angelegten Projekt verwenden willst, wähle in Hub **New project → Universal 3D** mit der Editorversion aus `ProjectVersion.txt`. Installiere über **Window → Package Management → Package Manager → Unity Registry** das **Input System**. Setze unter **Edit → Project Settings → Player → Other Settings → Configuration** das Feld **Active Input Handling** auf **Input System Package (New)** und starte den Editor neu. Prüfe unter **Project Settings → Input System Package**, dass **Update Mode** auf **Process Events In Dynamic Update** steht. Kopiere `Assets/Game` einschließlich der `.meta`-Dateien, benenne Layer 8 in **Player** um und öffne die Testszene. Übernimm sie für einen Build in die Szenenliste des Zielprojekts.
 
-Der Spieler nutzt die Kapsel für direkte Steuerung und Kollisionen. Die späteren Geschenke bekommen ihre eigene Rigidbody-Physik.
+Der Spieler nutzt die Kapsel für direkte Steuerung und Kollisionen. Geschenke nutzen Rigidbody-Physik.
 
 ## 6. Git
 
