@@ -488,28 +488,47 @@ namespace SantasLittleHelpers.Bootstrap
 
         private void OnGUI()
         {
-            if (!returning)
+            if (returning) return;
+
+            string scene = SceneManager.GetActiveScene().name;
+            bool cursorAvailable = Cursor.lockState != CursorLockMode.Locked;
+            Rect returnButton = new Rect(16, Screen.height - 48, 224, 32);
+            if (productLaunch && scene == CabinScene)
             {
-                if (productLaunch && SceneManager.GetActiveScene().name == "CozyCabin" && cabin != null && cabin.CanStartMission && GUI.Button(new Rect(16f, Screen.height - 44, 200f, 28f), "Mission starten"))
+                bool solo = pendingKind == HomeLaunchKind.Solo;
+                bool host = pendingKind == HomeLaunchKind.Host;
+                if (solo || host)
                 {
-                    StartMissionFromCabin();
+                    bool previousEnabled = GUI.enabled;
+                    GUI.enabled = !startRequested && (solo || (cabin != null && cabin.CanStartMission));
+                    bool start = GUI.Button(new Rect(16, Screen.height - 88, 224, 32), "Mission starten");
+                    GUI.enabled = previousEnabled;
+                    if (cursorAvailable && start)
+                    {
+                        if (solo) StartSoloMission();
+                        else StartMissionFromCabin();
+                        return;
+                    }
                 }
-                else if (productLaunch && pendingKind == HomeLaunchKind.Solo && SceneManager.GetActiveScene().name == "CozyCabin" && GUI.Button(new Rect(16f, Screen.height - 44, 200f, 28f), "Mission starten"))
+                if (!cursorAvailable)
                 {
-                    StartSoloMission();
+                    GUI.Label(new Rect(16, Screen.height - 48, 280, 32), "Esc für Maus und Hüttenmenü");
+                    return;
                 }
-                else if (productLaunch && SceneManager.GetActiveScene().name == "CozyCabin" && GUI.Button(new Rect(16f, Screen.height - 44, 180f, 28f), "Zurück zum Startbildschirm"))
-                {
+                if (GUI.Button(returnButton, "Zurück zum Startbildschirm"))
                     ReturnHome("Sitzung verlassen.");
-                }
-                else if (productLaunch && SceneManager.GetActiveScene().name == "DeliveryHouse" && Cursor.lockState != CursorLockMode.Locked && GUI.Button(new Rect(16f, Screen.height - 44, 180f, 28f), "Zurück zum Startbildschirm"))
-                {
-                    ReturnHome("Mission verlassen.");
-                }
-                else if (hasPendingCommit && SceneManager.GetActiveScene().name == "Home" && GUI.Button(new Rect(16f, Screen.height - 44, 200f, 28f), "Speichern erneut versuchen"))
-                {
-                    RetryPendingCommitAsync();
-                }
+                return;
+            }
+
+            if (productLaunch && scene == MissionScene && cursorAvailable &&
+                GUI.Button(returnButton, "Zurück zum Startbildschirm"))
+            {
+                ReturnHome("Mission verlassen.");
+            }
+            else if (hasPendingCommit && scene == HomeScene &&
+                     GUI.Button(returnButton, "Speichern erneut versuchen"))
+            {
+                _ = RetryPendingCommitAsync();
             }
         }
 
