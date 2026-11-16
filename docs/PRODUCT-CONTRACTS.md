@@ -1,5 +1,7 @@
 # Produktverträge v1
 
+Entwurfsstand aus Sprint 5. Den integrierten Szenenwechsel und die Laufzeitverantwortung beschreibt [Laufzeitarchitektur](engineering/ARCHITECTURE.md). Die verwendbaren Testflags und Nachweise stehen in der [Testmatrix](PRODUCT-TEST-MATRIX.md) und im [Sprintstand](delivery/STATUS.md).
+
 Stand: 9. November 2026
 Basis: MVP-Abnahme #16, `main` @ `712cf291de5c086fb0a1fb3a4cb3db886bddd38a`
 Unity: `6000.6.8f1` · NGO `2.13.3` (Pre-release laut `docs/NETCODE-SPIKE.md`)
