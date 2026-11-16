@@ -46,6 +46,7 @@ namespace SantasLittleHelpers.Delivery
         private bool smokeDeliveryPlaced;
         private bool smokeRestarted;
         private bool smokeFourPlayerResetStarted;
+        private bool smokeFourPlayerResetWaitingLogged;
         private bool productReturnStarted;
         private bool disconnectPreLogged;
         private bool quietDeliveryReported;
@@ -218,13 +219,32 @@ namespace SantasLittleHelpers.Delivery
         {
             if (!IsSpawned || !active.Value) return;
             if (IsServer) { TickServer(); TickSmoke(); TickPlayerPoseAudit(); }
-            if (IsServer && !smokeFourPlayerResetStarted &&
-                System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-four-player-reset-smoke") &&
-                NetworkManager.ConnectedClientsList.Count >= 4 && Time.unscaledTime - smokeStartedAt >= 6f)
+            bool fourPlayerResetSmoke = IsServer && !smokeFourPlayerResetStarted &&
+                System.Array.Exists(System.Environment.GetCommandLineArgs(), arg => arg == "--coop-four-player-reset-smoke");
+            if (fourPlayerResetSmoke)
             {
-                smokeFourPlayerResetStarted = true;
-                Debug.Log("COOP_FOUR_PLAYER_RESET_SMOKE started=true players=" + NetworkManager.ConnectedClientsList.Count);
-                ResetRoundServer();
+                // A connection callback can arrive before its PlayerObject exists. Retry initialization
+                // here, then let the host-side pose audit prove all four replicas reached their slots.
+                foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+                    if (!playerStarts.ContainsKey(client.ClientId)) InitializePlayer(client.ClientId);
+
+                bool fourDistinctSlots = playerStartSlots.Count == 4 &&
+                    new HashSet<int>(playerStartSlots.Values).Count == 4;
+                bool fourHostReplicaMarkers = playerPoseReported.Count == 4;
+                if (NetworkManager.ConnectedClientsList.Count >= 4 && fourDistinctSlots && fourHostReplicaMarkers &&
+                    Time.unscaledTime - smokeStartedAt >= 6f)
+                {
+                    smokeFourPlayerResetStarted = true;
+                    Debug.Log("COOP_FOUR_PLAYER_RESET_SMOKE started=true players=" + NetworkManager.ConnectedClientsList.Count +
+                        " initializedSlots=" + playerStartSlots.Count + " hostReplicaMarkers=" + playerPoseReported.Count);
+                    ResetRoundServer();
+                }
+                else if (!smokeFourPlayerResetWaitingLogged && NetworkManager.ConnectedClientsList.Count >= 4)
+                {
+                    smokeFourPlayerResetWaitingLogged = true;
+                    Debug.Log("COOP_FOUR_PLAYER_RESET_SMOKE waiting=true players=" + NetworkManager.ConnectedClientsList.Count +
+                        " initializedSlots=" + playerStartSlots.Count + " hostReplicaMarkers=" + playerPoseReported.Count);
+                }
             }
             if (IsServer && Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame && phase.Value >= 2) ResetRoundServer();
         }
