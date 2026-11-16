@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 2720196782769295792}
   - component: {fileID: 2485096650852720243}
   - component: {fileID: 7482676642099696089}
+  - component: {fileID: 2906042964577903115}
   m_Layer: 0
   m_Name: CoopResident
   m_TagString: Untagged
@@ -35,7 +36,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 3233315254250684433}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2449868610700967569
@@ -76,7 +78,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8190095184459434107}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -128,7 +130,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
   GlobalObjectIdHash: 0
   InScenePlacedSourceGlobalObjectIdHash: 0
@@ -155,7 +157,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.Components.NetworkTransform
   ShowTopMostFoldoutHeaderGroup: 1
   NetworkTransformExpanded: 0
@@ -201,7 +203,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 324579f944714d9bba94becfe74a6974, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.AI.ResidentBrain
   target: {fileID: 0}
   patrolPoints: []
@@ -232,6 +234,88 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2a12da586e39ae54cad29a1cece47cbf, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Delivery.NetworkResidentState
   ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &2906042964577903115
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8190095184459434107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f9840305ed3ee5459164f0be1569015, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SantasLittleHelpers.Delivery.DeliveryCharacterVisual
+  animator: {fileID: 6129563422185456772}
+  visualRoot: {fileID: 3233315254250684433}
+  animateJump: 0
+--- !u!1001 &1459623958662211651
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1045399867799567837}
+    m_Modifications:
+    - target: {fileID: 385954789543063001, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_Name
+      value: Resident Visual
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+--- !u!4 &3233315254250684433 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4079886698329352274, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+  m_PrefabInstance: {fileID: 1459623958662211651}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &6129563422185456772 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 4706601588102425799, guid: 8579394b8ab79c24f8708769813375d7, type: 3}
+  m_PrefabInstance: {fileID: 1459623958662211651}
+  m_PrefabAsset: {fileID: 0}

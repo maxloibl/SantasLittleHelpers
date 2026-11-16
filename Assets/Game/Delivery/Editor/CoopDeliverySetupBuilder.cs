@@ -20,10 +20,21 @@ namespace SantasLittleHelpers.Editor
         [MenuItem("Tools/Delivery/Build Coop Setup in DeliveryHouse")]
         public static void Build()
         {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPath) != null &&
+                AssetDatabase.LoadAssetAtPath<GameObject>(AuthorityPath) != null &&
+                AssetDatabase.LoadAssetAtPath<GameObject>(ResidentPath) != null)
+            {
+                EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+                if (Object.FindAnyObjectByType<CoopDeliveryEntry>() != null)
+                {
+                    InstallProductionVisuals();
+                    return;
+                }
+            }
+
             BuildPlayer();
             BuildAuthority();
             BuildResident();
-            IntegrateGiftVisuals();
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
             CoopDeliveryEntry existing = Object.FindFirstObjectByType<CoopDeliveryEntry>();
             if (existing != null) Object.DestroyImmediate(existing.gameObject);
@@ -78,6 +89,7 @@ namespace SantasLittleHelpers.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
+            InstallProductionVisuals();
             Debug.Log("COOP_SETUP_READY: Solo/Host/Client entry and mission-owned player prefab wired in DeliveryHouse.");
         }
 
@@ -155,20 +167,116 @@ namespace SantasLittleHelpers.Editor
             Object.DestroyImmediate(resident);
         }
 
-        private static void IntegrateGiftVisuals()
+        [MenuItem("Tools/Delivery/Install Production Visuals")]
+        public static void InstallProductionVisuals()
         {
-            string visualPath = "Assets/Game/Art/Prefabs/Gift_Cranberry_Visual.prefab";
-            foreach (string giftPath in new[] { "Assets/Game/Gifts/Prefabs/LightGift.prefab", "Assets/Game/Gifts/Prefabs/HeavyGift.prefab" })
+            const string characterKit = "Assets/Game/Art/Characters/Prefabs/";
+            const string missionKit = "Assets/Game/Art/MissionKit/Prefabs/";
+            EditPrefab(PlayerPath, player => InstallCharacter(player, "Cozy Elf Visual", characterKit + "Elf_Visual.prefab", true));
+            EditPrefab(ResidentPath, resident => InstallCharacter(resident, "Resident Visual", characterKit + "Resident_Visual.prefab", false));
+            EditPrefab("Assets/Game/Gifts/Prefabs/LightGift.prefab", gift =>
+                InstallGift(gift, missionKit + "LightGift_Visual.prefab", new Vector3(2f, 1.75f, 2f)));
+            EditPrefab("Assets/Game/Gifts/Prefabs/HeavyGift.prefab", gift =>
+                InstallGift(gift, missionKit + "HeavyGift_Visual.prefab", Vector3.one * 2f));
+
+            Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            GameObject soloPlayer = RequireSceneObject("LocalPlayer — Sleigh Start");
+            InstallCharacter(soloPlayer, "Cozy Elf Visual", characterKit + "Elf_Visual.prefab", true);
+            // Serialize the hidden owner mesh for the authored solo player.
+            foreach (Renderer renderer in soloPlayer.transform.Find("Cozy Elf Visual").GetComponentsInChildren<Renderer>(true))
+                renderer.enabled = false;
+
+            foreach (SantasLittleHelpers.AI.ResidentBrain brain in
+                     Object.FindObjectsByType<SantasLittleHelpers.AI.ResidentBrain>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                InstallCharacter(brain.gameObject, "Resident Visual", characterKit + "Resident_Visual.prefab", false);
+
+            GameObject goal = RequireSceneObject("Gift Delivery Zone");
+            Transform goalVisual = SetVisual(goal.transform, "Delivery Target Visual", missionKit + "DeliveryGoal_Visual.prefab");
+            goalVisual.localPosition = Vector3.down * (goal.GetComponent<BoxCollider>().size.y * .5f);
+            goalVisual.localScale = new Vector3(1.45f, 1f, 1f);
+
+            GameObject sleigh = RequireSceneObject("SLED PARKING — Return Here");
+            HideRootRenderer(sleigh);
+            Transform sleighVisual = SetVisual(sleigh.transform, "Sleigh Visual", missionKit + "Sleigh_Visual.prefab");
+            sleighVisual.localPosition = sleigh.transform.InverseTransformPoint(
+                new Vector3(sleigh.transform.position.x, 0f, sleigh.transform.position.z));
+            Vector3 sleighScale = sleigh.transform.lossyScale;
+            sleighVisual.localScale = new Vector3(2f / sleighScale.x, 2f / sleighScale.y, 2f / sleighScale.z);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+            Debug.Log("DELIVERY_PRODUCTION_VISUALS_INSTALLED scene=DeliveryHouse models=6");
+        }
+
+        private static GameObject RequireSceneObject(string name)
+        {
+            return GameObject.Find(name) ?? throw new System.InvalidOperationException("Missing scene object: " + name);
+        }
+
+        private static void EditPrefab(string path, System.Action<GameObject> edit)
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+            try
             {
-                GameObject gift = PrefabUtility.LoadPrefabContents(giftPath);
-                if (gift.transform.Find("Cranberry Gift Visual") == null)
-                {
-                    GameObject visual = PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(visualPath)) as GameObject;
-                    visual.name = "Cranberry Gift Visual"; visual.transform.SetParent(gift.transform, false);
-                }
-                PrefabUtility.SaveAsPrefabAsset(gift, giftPath);
-                PrefabUtility.UnloadPrefabContents(gift);
+                edit(root);
+                PrefabUtility.SaveAsPrefabAsset(root, path);
             }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        private static void InstallCharacter(GameObject root, string childName, string path, bool animateJump)
+        {
+            HideRootRenderer(root);
+            Transform visual = SetVisual(root.transform, childName, path);
+            if (root.TryGetComponent(out CapsuleCollider body))
+                visual.localPosition = Vector3.up * (body.center.y - body.height * .5f);
+            Animator animator = visual.GetComponentInChildren<Animator>(true);
+            if (animator == null || animator.applyRootMotion)
+                throw new System.InvalidOperationException("Missing in-place character animator: " + path);
+
+            DeliveryCharacterVisual motion = root.GetComponent<DeliveryCharacterVisual>();
+            if (motion == null) motion = root.AddComponent<DeliveryCharacterVisual>();
+            var data = new SerializedObject(motion);
+            data.FindProperty("animator").objectReferenceValue = animator;
+            data.FindProperty("visualRoot").objectReferenceValue = visual;
+            data.FindProperty("animateJump").boolValue = animateJump;
+            data.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void InstallGift(GameObject root, string path, Vector3 scale)
+        {
+            HideRootRenderer(root);
+            Transform visual = SetVisual(root.transform, "Cranberry Gift Visual", path);
+            visual.localPosition = Vector3.down * .5f;
+            visual.localScale = scale;
+        }
+
+        private static void HideRootRenderer(GameObject root)
+        {
+            if (root.TryGetComponent(out Renderer renderer)) renderer.enabled = false;
+        }
+
+        private static Transform SetVisual(Transform parent, string name, string path)
+        {
+            GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (asset == null) throw new System.InvalidOperationException("Missing visual wrapper: " + path);
+
+            Transform existing = parent.Find(name);
+            GameObject visual = existing != null ? existing.gameObject : null;
+            if (visual != null && PrefabUtility.GetCorrespondingObjectFromSource(visual) != asset)
+            {
+                Object.DestroyImmediate(visual);
+                visual = null;
+            }
+            if (visual == null) visual = (GameObject)PrefabUtility.InstantiatePrefab(asset, parent);
+            visual.name = name;
+            visual.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            visual.transform.localScale = Vector3.one;
+            return visual.transform;
         }
     }
 }
