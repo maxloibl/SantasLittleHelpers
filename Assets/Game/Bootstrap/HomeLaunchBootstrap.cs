@@ -94,6 +94,7 @@ namespace SantasLittleHelpers.Bootstrap
                 return;
             }
             instance = this;
+            FirstPersonController.IsCursorCaptureBlocked = IsPointerOverProductMenu;
             string value;
             bool flag = TryGetArgumentValue("--product-smoke=", out value);
             string text = (flag ? GetArgumentValue("--profile=") : string.Empty);
@@ -117,12 +118,21 @@ namespace SantasLittleHelpers.Bootstrap
             sessions.SceneEventReceived -= OnNetworkSceneEvent;
             if (instance == this)
             {
+                FirstPersonController.IsCursorCaptureBlocked = null;
                 instance = null;
             }
         }
 
         private void Update()
         {
+            if (Application.isFocused && productLaunch && !returning &&
+                SceneManager.GetActiveScene().name == CabinScene && CanStartFromCabin &&
+                UnityEngine.InputSystem.Keyboard.current?.enterKey.wasPressedThisFrame == true)
+            {
+                RequestCabinMission();
+                return;
+            }
+
             if (productLaunch && !returning && pendingKind == HomeLaunchKind.Join && !(sessions.ActiveManager == null) && !sessions.ActiveManager.IsServer)
             {
                 CoopNetworkRound coopNetworkRound = UnityEngine.Object.FindAnyObjectByType<CoopNetworkRound>();
@@ -486,13 +496,36 @@ namespace SantasLittleHelpers.Bootstrap
             }
         }
 
+        private static Rect MissionButton => new Rect(16, Screen.height - 88, 224, 32);
+        private static Rect ReturnButton => new Rect(16, Screen.height - 48, 224, 32);
+
+        private bool CanStartFromCabin => !startRequested &&
+            (pendingKind == HomeLaunchKind.Solo ||
+             (pendingKind == HomeLaunchKind.Host && cabin != null && cabin.CanStartMission));
+
+        private bool IsPointerOverProductMenu(Vector2 position)
+        {
+            if (!productLaunch || returning) return false;
+            position.y = Screen.height - position.y;
+            string scene = SceneManager.GetActiveScene().name;
+            if (scene != CabinScene && scene != MissionScene) return false;
+            return ReturnButton.Contains(position) ||
+                (scene == CabinScene && pendingKind != HomeLaunchKind.Join && MissionButton.Contains(position));
+        }
+
+        private void RequestCabinMission()
+        {
+            if (pendingKind == HomeLaunchKind.Solo) StartSoloMission();
+            else StartMissionFromCabin();
+        }
+
         private void OnGUI()
         {
             if (returning) return;
 
             string scene = SceneManager.GetActiveScene().name;
             bool cursorAvailable = Cursor.lockState != CursorLockMode.Locked;
-            Rect returnButton = new Rect(16, Screen.height - 48, 224, 32);
+            Rect returnButton = ReturnButton;
             if (productLaunch && scene == CabinScene)
             {
                 bool solo = pendingKind == HomeLaunchKind.Solo;
@@ -500,13 +533,12 @@ namespace SantasLittleHelpers.Bootstrap
                 if (solo || host)
                 {
                     bool previousEnabled = GUI.enabled;
-                    GUI.enabled = !startRequested && (solo || (cabin != null && cabin.CanStartMission));
-                    bool start = GUI.Button(new Rect(16, Screen.height - 88, 224, 32), "Mission starten");
+                    GUI.enabled = CanStartFromCabin;
+                    bool start = GUI.Button(MissionButton, "Mission starten (Enter)");
                     GUI.enabled = previousEnabled;
                     if (cursorAvailable && start)
                     {
-                        if (solo) StartSoloMission();
-                        else StartMissionFromCabin();
+                        RequestCabinMission();
                         return;
                     }
                 }

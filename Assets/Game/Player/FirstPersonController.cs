@@ -8,6 +8,7 @@ namespace SantasLittleHelpers
     public sealed class FirstPersonController : MonoBehaviour
     {
         public const float DefaultMouseSensitivity = 0.12f;
+        internal static System.Predicate<Vector2> IsCursorCaptureBlocked { get; set; }
 
         [SerializeField] private Transform viewPivot;
         [SerializeField] private LayerMask ceilingLayers = ~(1 << 8);
@@ -196,7 +197,8 @@ namespace SantasLittleHelpers
             if (Cursor.lockState == CursorLockMode.Locked)
                 return true;
 
-            if (captureCursor.WasPressedThisFrame())
+            if (captureCursor.WasPressedThisFrame() &&
+                (Mouse.current == null || IsCursorCaptureBlocked?.Invoke(Mouse.current.position.ReadValue()) != true))
             {
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
